@@ -6,7 +6,7 @@ import {
   getHouseById,
   getHouses,
   updateHouse,
-} from "../controllers/houseController";
+} from "../controllers/houseControllers";
 import { isAuthenticated } from "../middlewares/authMiddleware";
 
 const router = express.Router();
