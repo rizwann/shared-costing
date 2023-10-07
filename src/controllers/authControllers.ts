@@ -3,7 +3,6 @@ import bcrypt from "bcrypt";
 import { Request, Response } from "express";
 import { validationResult } from "express-validator";
 import User from "../models/User";
-
 export const registerUser = async (req: Request, res: Response) => {
   try {
     // Validate user input
@@ -50,6 +49,9 @@ export const loginUser = async (req: Request, res: Response) => {
     if (!passwordMatch) {
       return res.status(400).json({ message: "Invalid credentials" });
     }
+
+    // Store user object in session
+    req.session.user = user;
 
     res.status(200).json({ message: "Login successful" });
   } catch (error) {
