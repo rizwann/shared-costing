@@ -4,12 +4,12 @@ export interface IUser extends Document {
   username: string;
   email: string;
   password: string;
+  houseCodes: string[]; // Array of house codes the user belongs to
 }
 
 const UserSchema: Schema = new Schema({
   username: {
     type: String,
-    unique: true,
     required: true,
   },
   email: {
@@ -20,6 +20,10 @@ const UserSchema: Schema = new Schema({
   password: {
     type: String,
     required: true,
+  },
+  houseCodes: {
+    type: [String], // Array of house codes
+    default: [],
   },
 });
 

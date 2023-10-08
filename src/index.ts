@@ -4,6 +4,7 @@ import express from "express";
 import session from "express-session";
 import mongoose from "mongoose";
 import authRoutes from "./routes/authRoutes";
+import expenseRoutes from "./routes/expenseRoutes";
 import houseRoutes from "./routes/houseRoutes";
 import storeRoutes from "./routes/storeRoutes";
 
@@ -43,8 +44,9 @@ const db = mongoose.connection;
 
 // Use the authentication and house routes
 app.use("/auth", authRoutes);
-app.use("/houses", houseRoutes); // Use the house routes
-app.use("/stores", storeRoutes); // Use the store routes
+app.use("/houses", houseRoutes);
+app.use("/stores", storeRoutes);
+app.use("/expenses", expenseRoutes);
 
 db.on("error", (err) => {
   console.error("MongoDB connection error:", err);

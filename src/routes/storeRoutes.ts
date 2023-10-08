@@ -22,13 +22,14 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage });
+
 router.use(isAuthenticated);
 
 // Create a new store with image upload
 router.post("/create", upload.single("image"), createStore);
 
 // Get all hstore
-router.get("/all", getStores);
+router.get("/", getStores);
 
 // Get a store by ID
 router.get("/:id", getStoreById);

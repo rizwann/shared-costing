@@ -1,7 +1,11 @@
 // authRoutes.ts
 import express from "express";
 import { check } from "express-validator";
-import { loginUser, registerUser } from "../controllers/authControllers"; // Import controller functions
+import {
+  joinHouse,
+  loginUser,
+  registerUser,
+} from "../controllers/authControllers"; // Import controller functions
 
 const router = express.Router();
 
@@ -31,5 +35,7 @@ router.get("/logout", (req, res) => {
     res.status(200).json({ message: "User logged out" });
   });
 });
+
+router.post("/join-house", joinHouse);
 
 export default router;

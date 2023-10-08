@@ -1,0 +1,42 @@
+import mongoose, { Document, Schema } from "mongoose";
+
+export interface IExpense extends Document {
+  store: string;
+  cost: number;
+  category: string;
+  description: string;
+  user: string; // User id who added the expense
+  houseCode: string; // House id to which the expense is assigned
+}
+
+const ExpenseSchema: Schema = new Schema({
+  store: {
+    type: Schema.Types.ObjectId,
+    ref: "Store",
+    required: true,
+  },
+  cost: {
+    type: Number,
+    required: true,
+  },
+  category: {
+    type: String,
+    required: true,
+  },
+  description: {
+    type: String,
+    required: true,
+  },
+  user: {
+    type: Schema.Types.ObjectId, // User id who added the expense
+    ref: "User", // Reference to the User model
+    required: true,
+  },
+  houseCode: {
+    type: String, //
+    required: true,
+  },
+});
+
+const Expense = mongoose.model<IExpense>("Expense", ExpenseSchema);
+export default Expense;
