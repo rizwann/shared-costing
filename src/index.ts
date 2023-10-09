@@ -15,7 +15,7 @@ require("dotenv").config();
 
 // Middleware
 app.use(bodyParser.json()); // Parse JSON requests
-app.use(cors()); // Enable CORS if necessary
+app.use(cors());
 const port = 3000;
 const mongoURI = process.env.MONGODB_URI as string;
 
@@ -26,7 +26,7 @@ const store = new MongoDBStore({
 });
 app.use(
   session({
-    secret: "your-secret-key",
+    secret: process.env.SESSION_SECRET as string,
     resave: false,
     saveUninitialized: true,
     store: store,
