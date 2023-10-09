@@ -2,6 +2,7 @@
 
 import { NextFunction, Request, Response } from "express";
 import Expense from "../models/Expense";
+import User from "../models/User";
 
 export const isAuthenticated = (
   req: Request,
@@ -54,6 +55,58 @@ export const checkExpensesOwnership = async (
       return res.status(403).json({ message: "User not Authorized" });
     }
 
+    next();
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const checkExpensesOwnershipAndHouseOwnership = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id, houseCode } = req.params;
+    const userId = req.session?.user?._id;
+
+    const user = String(userId) === String(id);
+    const userHouses = await User.findById(userId).select("houseCodes");
+
+    if (!user) {
+      return res.status(403).json({ message: "Unauthorized request" });
+    }
+
+    if (!userHouses?.houseCodes.includes(houseCode)) {
+      return res
+        .status(403)
+        .json({ message: "Unauthorized, you are not a member of this house" });
+    }
+    next();
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const checkHouseOwnership = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { houseCode } = req.params;
+
+    const userId = req.session?.user?._id;
+
+    const userHouses = await User.findById(userId).select("houseCodes");
+
+    if (!userHouses?.houseCodes.includes(houseCode)) {
+      return res
+        .status(403)
+        .json({ message: "Unauthorized, you are not a member of this house" });
+    }
     next();
   } catch (error) {
     console.error(error);

@@ -3,8 +3,8 @@ import multer from "multer";
 import {
   createHouse,
   deleteHouse,
-  getHouseById,
-  getHouses,
+  getHousesByUserId,
+  joinHouse,
   updateHouse,
 } from "../controllers/houseControllers";
 import { isAuthenticated } from "../middlewares/authMiddleware";
@@ -27,16 +27,16 @@ router.use(isAuthenticated);
 // Create a new house with image upload
 router.post("/create", upload.single("image"), createHouse);
 
-// Get all houses
-router.get("/all", getHouses);
-
 // Get a house by ID
-router.get("/:id", getHouseById);
+router.get("/:id", getHousesByUserId);
 
 // Update a house by ID
 router.put("/:id", upload.single("image"), updateHouse);
 
 // Delete a house by ID
 router.delete("/:id", deleteHouse);
+
+// join a house
+router.post("/join-house", joinHouse);
 
 export default router;

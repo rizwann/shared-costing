@@ -12,8 +12,11 @@ export const createExpense = async (req: Request, res: Response) => {
     const userHouses = await User.findById(userId).select("houseCodes");
 
     if (!userHouses?.houseCodes.includes(houseCode)) {
-      return res.status(403).json({ message: "Unauthorized" });
+      return res
+        .status(403)
+        .json({ message: "Unauthorized, you are not a member of this house!" });
     }
+    const date = new Date();
 
     const newExpense = new Expense({
       user: userId,
@@ -22,12 +25,12 @@ export const createExpense = async (req: Request, res: Response) => {
       category,
       description,
       houseCode,
+      date,
     });
     const savedExpense = await newExpense.save();
 
     res.status(201).json(savedExpense);
   } catch (error: any) {
-    console.error(error);
     if (error.name === "ValidationError") {
       return res.status(400).json({ message: error.message });
     }
@@ -161,18 +164,11 @@ export const getAllExpensesByUserInHouse = async (
   }
 };
 
+//get all expenses by house
 export const getAllExpensesByHouse = async (req: Request, res: Response) => {
   try {
     const { houseCode } = req.params;
     const expenses = await Expense.find({ houseCode: houseCode });
-
-    //check if the current user has this houseCode in their houseCodes array
-    const userId = req.session?.user?._id;
-    const userHouses = await User.findById(userId).select("houseCodes");
-
-    if (!userHouses?.houseCodes.includes(houseCode)) {
-      return res.status(403).json({ message: "Unauthorized" });
-    }
 
     if (!expenses) {
       return res.status(404).json({ message: "Expenses not found" });
@@ -185,6 +181,271 @@ export const getAllExpensesByHouse = async (req: Request, res: Response) => {
     }
 
     res.status(200).json(expenses);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+//get expense of current month by the user in a specific house
+
+export const getExpensesOfCurrentMonthByUserInHouse = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const { id, houseCode } = req.params;
+    console.log(houseCode);
+    const expenses = await Expense.find({ user: id, houseCode: houseCode });
+
+    if (!expenses) {
+      return res.status(404).json({ message: "Expenses not found" });
+    }
+
+    if (expenses.length === 0) {
+      return res
+        .status(200)
+        .json({ message: "No expenses found for this user" });
+    }
+
+    const date = new Date();
+    const currentMonth = date.getMonth();
+    const currentYear = date.getFullYear();
+    // check which expenses has date property
+    // Todo: remove this after adding date property to all expenses
+    const expensesWithDateProp = expenses.filter((expense) => expense.date);
+    const expensesOfCurrentMonth = expensesWithDateProp.filter(
+      (expense) =>
+        expense.date.getMonth() === currentMonth &&
+        expense.date.getFullYear() === currentYear
+    );
+
+    res.status(200).json(expensesOfCurrentMonth);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// get expense of current month by house
+export const getExpensesOfCurrentMonthByHouse = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const { houseCode } = req.params;
+
+    //check if the current user has this houseCode in their houseCodes array
+    // const userId = req.session?.user?._id;
+    // const userHouses = await User.findById(userId).select("houseCodes");
+
+    // if (!userHouses?.houseCodes.includes(houseCode)) {
+    //   return res
+    //     .status(403)
+    //     .json({ message: "Unauthorized, you are not a member of this house" });
+    // }
+
+    const expenses = await Expense.find({ houseCode: houseCode });
+
+    if (!expenses) {
+      return res.status(404).json({ message: "Expenses not found" });
+    }
+
+    if (expenses.length === 0) {
+      return res
+        .status(200)
+        .json({ message: "No expenses found for this user" });
+    }
+
+    const date = new Date();
+    const currentMonth = date.getMonth();
+    const currentYear = date.getFullYear();
+    // check which expenses has date property
+    // Todo: remove this after adding date property to all expenses
+    const expensesWithDateProp = expenses.filter((expense) => expense.date);
+    const expensesOfCurrentMonth = expensesWithDateProp.filter(
+      (expense) =>
+        expense.date.getMonth() === currentMonth &&
+        expense.date.getFullYear() === currentYear
+    );
+
+    res.status(200).json(expensesOfCurrentMonth);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// get expense of current year by the user in a specific house
+
+export const getExpensesOfCurrentYearByUserInHouse = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const { id, houseCode } = req.params;
+    const expenses = await Expense.find({ user: id, houseCode: houseCode });
+
+    if (!expenses) {
+      return res.status(404).json({ message: "Expenses not found" });
+    }
+
+    if (expenses.length === 0) {
+      return res
+        .status(200)
+        .json({ message: "No expenses found for this user" });
+    }
+
+    const date = new Date();
+    const currentYear = date.getFullYear();
+    // check which expenses has date property
+    // Todo: remove this after adding date property to all expenses
+    const expensesWithDateProp = expenses.filter((expense) => expense.date);
+
+    const expensesOfCurrentYear = expensesWithDateProp.filter(
+      (expense) => expense.date.getFullYear() === currentYear
+    );
+
+    res.status(200).json(expensesOfCurrentYear);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// get expense of a specific year by the user in a specific house
+export const getExpensesOfSpecificYearByUserInHouse = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const { id, houseCode, year } = req.params;
+    const expenses = await Expense.find({ user: id, houseCode: houseCode });
+
+    if (!expenses) {
+      return res.status(404).json({ message: "Expenses not found" });
+    }
+
+    if (expenses.length === 0) {
+      return res
+        .status(200)
+        .json({ message: "No expenses found for this user" });
+    }
+    // check which expenses has date property
+    // Todo: remove this after adding date property to all expenses
+    const expensesWithDateProp = expenses.filter((expense) => expense.date);
+    const expensesOfSpecificYear = expensesWithDateProp.filter(
+      (expense) => expense.date.getFullYear() === Number(year)
+    );
+
+    res.status(200).json(expensesOfSpecificYear);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+// get expense of a specific year in a specific house
+export const getExpensesOfSpecificHouseByYear = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const { houseCode, year } = req.params;
+    const expenses = await Expense.find({ houseCode: houseCode });
+
+    if (!expenses) {
+      return res.status(404).json({ message: "Expenses not found" });
+    }
+
+    if (expenses.length === 0) {
+      return res
+        .status(200)
+        .json({ message: "No expenses found for this user" });
+    }
+    // check which expenses has date property
+    // Todo: remove this after adding date property to all expenses
+    const expensesWithDateProp = expenses.filter((expense) => expense.date);
+    const expensesOfSpecificYear = expensesWithDateProp.filter(
+      (expense) => expense.date.getFullYear() === Number(year)
+    );
+
+    res.status(200).json(expensesOfSpecificYear);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// get expenses of a specific month and year by the user in a specific house
+
+export const getExpensesOfSpecificMonthAndYearByUserInHouse = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const { id, houseCode, month, year } = req.params;
+    const expenses = await Expense.find({ user: id, houseCode: houseCode });
+
+    if (!expenses) {
+      return res.status(404).json({ message: "Expenses not found" });
+    }
+
+    if (expenses.length === 0) {
+      return res
+        .status(200)
+        .json({ message: "No expenses found for this user" });
+    }
+    // check which expenses has date property
+    // Todo: remove this after adding date property to all expenses
+    const expensesWithDateProp = expenses.filter((expense) => expense.date);
+    const expensesOfSpecificMonthAndYear = expensesWithDateProp.filter(
+      (expense) =>
+        expense.date.getFullYear() === Number(year) &&
+        expense.date.getMonth() === Number(month) - 1
+    );
+
+    res.status(200).json(expensesOfSpecificMonthAndYear);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+//get expenses of a specific month and year in a specific house
+
+export const getExpensesOfSpecificMonthAndYearByHouse = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const { houseCode, month, year } = req.params;
+    const expenses = await Expense.find({ houseCode: houseCode });
+
+    if (!expenses) {
+      return res.status(404).json({ message: "Expenses not found" });
+    }
+
+    if (expenses.length === 0) {
+      return res
+        .status(200)
+        .json({ message: "No expenses found for this user" });
+    }
+    // check which expenses has date property
+    // Todo: remove this after adding date property to all expenses
+    const expensesWithDateProp = expenses.filter((expense) => expense.date);
+    const expensesOfSpecificMonthAndYear = expensesWithDateProp.filter(
+      (expense) =>
+        expense.date.getFullYear() === Number(year) &&
+        expense.date.getMonth() === Number(month) - 1
+    );
+
+    if (expensesOfSpecificMonthAndYear.length === 0) {
+      return res
+        .status(200)
+        .json({ message: "No expenses found for this month and year" });
+    }
+
+    res.status(200).json(expensesOfSpecificMonthAndYear);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });

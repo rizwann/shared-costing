@@ -2,7 +2,6 @@
 import bcrypt from "bcrypt";
 import { Request, Response } from "express";
 import { validationResult } from "express-validator";
-import House from "../models/House";
 import User from "../models/User";
 export const registerUser = async (req: Request, res: Response) => {
   try {
@@ -54,41 +53,7 @@ export const loginUser = async (req: Request, res: Response) => {
     // Store user object in session
     req.session.user = user;
 
-    res.status(200).json({ message: "Login successful" });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
-// Add this new route in authController.ts
-export const joinHouse = async (req: Request, res: Response) => {
-  try {
-    const { houseCode } = req.body;
-
-    // Find the house with the provided code
-    const house = await House.findOne({ code: houseCode });
-
-    if (!house) {
-      return res.status(404).json({ message: "House not found" });
-    }
-
-    // Add the user to the house
-    const user = req.session?.user; // Get the logged-in user
-    if (user) {
-      // Check if the user is not already in the house
-      if (!user.houseCodes.includes(houseCode)) {
-        user.houseCodes.push(houseCode); // Add the house code to user's houseCodes array
-        await user.save();
-        house.users.push(user._id); // Add the user to the house's users array
-        await house.save();
-        res.status(200).json({ message: "Joined house successfully" });
-      } else {
-        res.status(400).json({ message: "User is already in the house" });
-      }
-    } else {
-      res.status(401).json({ message: "Unauthorized" });
-    }
+    res.status(200).json({ message: "Login successful", user });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });

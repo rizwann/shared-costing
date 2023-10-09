@@ -7,6 +7,7 @@ export interface IExpense extends Document {
   description: string;
   user: string; // User id who added the expense
   houseCode: string; // House id to which the expense is assigned
+  date: Date;
 }
 
 const ExpenseSchema: Schema = new Schema({
@@ -34,6 +35,10 @@ const ExpenseSchema: Schema = new Schema({
   },
   houseCode: {
     type: String, //
+    required: true,
+  },
+  date: {
+    type: Date,
     required: true,
   },
 });
