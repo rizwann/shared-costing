@@ -50,10 +50,13 @@ export const loginUser = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
-    // Store user object in session
-    req.session.user = user;
+    const loggedInUser = {
+      _id: user._id,
+      username: user.username,
+      email: user.email,
+    };
 
-    res.status(200).json({ message: "Login successful", user });
+    res.status(200).json({ message: "Login successful", user: loggedInUser });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });

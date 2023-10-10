@@ -7,7 +7,6 @@ import {
   getStoreById,
   getStores,
 } from "../controllers/storeControllers";
-import { isAuthenticated } from "../middlewares/authMiddleware";
 
 const router = express.Router();
 
@@ -23,7 +22,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-router.use(isAuthenticated);
+//router.use(isAuthenticated);
 
 // Create a new store with image upload
 router.post("/create", upload.single("image"), createStore);

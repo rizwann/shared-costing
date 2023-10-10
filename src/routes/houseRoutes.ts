@@ -1,4 +1,5 @@
 import express from "express";
+import { check } from "express-validator";
 import multer from "multer";
 import {
   createHouse,
@@ -7,7 +8,6 @@ import {
   joinHouse,
   updateHouse,
 } from "../controllers/houseControllers";
-import { isAuthenticated } from "../middlewares/authMiddleware";
 
 const router = express.Router();
 
@@ -22,10 +22,19 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage });
-router.use(isAuthenticated);
+//router.use(isAuthenticated);
 
 // Create a new house with image upload
-router.post("/create", upload.single("image"), createHouse);
+router.post(
+  "/create",
+  [
+    check("code", "Code must be at least 6 characters long").isLength({
+      min: 6,
+    }),
+  ],
+  upload.single("image"),
+  createHouse
+);
 
 // Get a house by ID
 router.get("/:id", getHousesByUserId);

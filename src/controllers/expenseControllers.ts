@@ -5,9 +5,7 @@ import User from "../models/User";
 // Create a new expense
 export const createExpense = async (req: Request, res: Response) => {
   try {
-    const { store, cost, category, description, houseCode } = req.body;
-
-    const userId = req.session?.user?._id;
+    const { store, cost, category, description, houseCode, userId } = req.body;
 
     const userHouses = await User.findById(userId).select("houseCodes");
 
@@ -57,8 +55,8 @@ export const getAllExpenses = async (req: Request, res: Response) => {
 // Get a single expense by ID
 export const getExpenseById = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    const expense = await Expense.findById(id);
+    const { expenseId } = req.params;
+    const expense = await Expense.findById(expenseId);
 
     if (!expense) {
       return res.status(404).json({ message: "Expense not found" });
@@ -74,11 +72,11 @@ export const getExpenseById = async (req: Request, res: Response) => {
 // Update an expense by ID
 export const updateExpense = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const { expenseId } = req.params;
     const { cost, category, description } = req.body;
 
     const expense = await Expense.findByIdAndUpdate(
-      id,
+      expenseId,
       { cost, category, description },
       { new: true }
     );
@@ -97,9 +95,9 @@ export const updateExpense = async (req: Request, res: Response) => {
 // Delete an expense by ID
 export const deleteExpense = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const { expenseId } = req.params;
 
-    const expense = await Expense.findByIdAndRemove(id);
+    const expense = await Expense.findByIdAndRemove(expenseId);
 
     if (!expense) {
       return res.status(404).json({ message: "Expense not found" });
@@ -115,8 +113,8 @@ export const deleteExpense = async (req: Request, res: Response) => {
 // get all expenses by user, only accessible by that user
 export const getAllExpensesByUser = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    const expenses = await Expense.find({ user: id });
+    const { userId } = req.params;
+    const expenses = await Expense.find({ user: userId });
 
     if (!expenses) {
       return res.status(404).json({ message: "Expenses not found" });
@@ -142,10 +140,10 @@ export const getAllExpensesByUserInHouse = async (
   res: Response
 ) => {
   try {
-    const { id, houseCode } = req.params;
+    const { userId, houseCode } = req.params;
     // const expenses = await Expense.find({ user: id, houseCode: houseCode });
     // here houseCode is a string and have to check if it is in the user's houseCodes array
-    const expenses = await Expense.find({ user: id, houseCode: houseCode });
+    const expenses = await Expense.find({ user: userId, houseCode: houseCode });
 
     if (!expenses) {
       return res.status(404).json({ message: "Expenses not found" });
@@ -194,9 +192,9 @@ export const getExpensesOfCurrentMonthByUserInHouse = async (
   res: Response
 ) => {
   try {
-    const { id, houseCode } = req.params;
+    const { userId, houseCode } = req.params;
     console.log(houseCode);
-    const expenses = await Expense.find({ user: id, houseCode: houseCode });
+    const expenses = await Expense.find({ user: userId, houseCode: houseCode });
 
     if (!expenses) {
       return res.status(404).json({ message: "Expenses not found" });
@@ -228,22 +226,12 @@ export const getExpensesOfCurrentMonthByUserInHouse = async (
 };
 
 // get expense of current month by house
-export const getExpensesOfCurrentMonthByHouse = async (
+export const getExpensesOfHouseByCurrentMonth = async (
   req: Request,
   res: Response
 ) => {
   try {
     const { houseCode } = req.params;
-
-    //check if the current user has this houseCode in their houseCodes array
-    // const userId = req.session?.user?._id;
-    // const userHouses = await User.findById(userId).select("houseCodes");
-
-    // if (!userHouses?.houseCodes.includes(houseCode)) {
-    //   return res
-    //     .status(403)
-    //     .json({ message: "Unauthorized, you are not a member of this house" });
-    // }
 
     const expenses = await Expense.find({ houseCode: houseCode });
 
@@ -283,8 +271,8 @@ export const getExpensesOfCurrentYearByUserInHouse = async (
   res: Response
 ) => {
   try {
-    const { id, houseCode } = req.params;
-    const expenses = await Expense.find({ user: id, houseCode: houseCode });
+    const { userId, houseCode } = req.params;
+    const expenses = await Expense.find({ user: userId, houseCode: houseCode });
 
     if (!expenses) {
       return res.status(404).json({ message: "Expenses not found" });
@@ -319,8 +307,8 @@ export const getExpensesOfSpecificYearByUserInHouse = async (
   res: Response
 ) => {
   try {
-    const { id, houseCode, year } = req.params;
-    const expenses = await Expense.find({ user: id, houseCode: houseCode });
+    const { userId, houseCode, year } = req.params;
+    const expenses = await Expense.find({ user: userId, houseCode: houseCode });
 
     if (!expenses) {
       return res.status(404).json({ message: "Expenses not found" });
@@ -368,6 +356,9 @@ export const getExpensesOfSpecificHouseByYear = async (
     const expensesOfSpecificYear = expensesWithDateProp.filter(
       (expense) => expense.date.getFullYear() === Number(year)
     );
+    if (expensesOfSpecificYear.length === 0) {
+      return res.status(200).json({ message: "No expenses found for " + year });
+    }
 
     res.status(200).json(expensesOfSpecificYear);
   } catch (error) {
@@ -383,8 +374,8 @@ export const getExpensesOfSpecificMonthAndYearByUserInHouse = async (
   res: Response
 ) => {
   try {
-    const { id, houseCode, month, year } = req.params;
-    const expenses = await Expense.find({ user: id, houseCode: houseCode });
+    const { userId, houseCode, month, year } = req.params;
+    const expenses = await Expense.find({ user: userId, houseCode: houseCode });
 
     if (!expenses) {
       return res.status(404).json({ message: "Expenses not found" });

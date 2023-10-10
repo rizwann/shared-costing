@@ -1,7 +1,6 @@
 import bodyParser from "body-parser";
 import cors from "cors";
 import express from "express";
-import session from "express-session";
 import mongoose from "mongoose";
 import authRoutes from "./routes/authRoutes";
 import expenseRoutes from "./routes/expenseRoutes";
@@ -19,34 +18,16 @@ app.use(cors());
 const port = 3000;
 const mongoURI = process.env.MONGODB_URI as string;
 
-const MongoDBStore = require("connect-mongodb-session")(session);
-const store = new MongoDBStore({
-  uri: mongoURI,
-  collection: "sessions",
-});
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET as string,
-    resave: false,
-    saveUninitialized: true,
-    store: store,
-    cookie: {
-      secure: false,
-      maxAge: 24 * 60 * 60 * 1000,
-    },
-  })
-);
-
 // MongoDB Connection
 mongoose.connect(mongoURI);
 
 const db = mongoose.connection;
 
 // Use the authentication and house routes
-app.use("/auth", authRoutes);
-app.use("/houses", houseRoutes);
-app.use("/stores", storeRoutes);
-app.use("/expenses", expenseRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/houses", houseRoutes);
+app.use("/api/stores", storeRoutes);
+app.use("/api/expenses", expenseRoutes);
 
 db.on("error", (err) => {
   console.error("MongoDB connection error:", err);

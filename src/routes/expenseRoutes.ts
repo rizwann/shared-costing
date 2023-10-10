@@ -6,9 +6,9 @@ import {
   getAllExpensesByUser,
   getAllExpensesByUserInHouse,
   getExpenseById,
-  getExpensesOfCurrentMonthByHouse,
   getExpensesOfCurrentMonthByUserInHouse,
   getExpensesOfCurrentYearByUserInHouse,
+  getExpensesOfHouseByCurrentMonth,
   getExpensesOfSpecificHouseByYear,
   getExpensesOfSpecificMonthAndYearByHouse,
   getExpensesOfSpecificMonthAndYearByUserInHouse,
@@ -17,15 +17,13 @@ import {
 } from "../controllers/expenseControllers";
 import {
   checkExpenseOwnership,
-  checkExpensesOwnership,
   checkExpensesOwnershipAndHouseOwnership,
   checkHouseOwnership,
-  isAuthenticated,
 } from "../middlewares/authMiddleware";
 
 const router = express.Router();
 
-router.use(isAuthenticated);
+// router.use(isAuthenticated);
 
 // Create a new expense
 router.post("/create", createExpense);
@@ -34,22 +32,22 @@ router.post("/create", createExpense);
 //router.get("/", getAllExpenses);
 
 // Get a single expense by ID
-router.get("/:id", checkExpenseOwnership, getExpenseById);
+router.get("/:expenseId", checkExpenseOwnership, getExpenseById);
 
 // Get all expenses by user ID
-router.get("/user/:id", checkExpensesOwnership, getAllExpensesByUser);
+router.get("/user/:userId", getAllExpensesByUser);
 
 // Update an expense by ID
-router.put("/edit/:id", checkExpenseOwnership, updateExpense);
+router.put("/edit/:expenseId", checkExpenseOwnership, updateExpense);
 
 // Delete an expense by ID
-router.delete("/:id", checkExpenseOwnership, deleteExpense);
+router.delete("/:expenseId", checkExpenseOwnership, deleteExpense);
 
 // all routes for expenses reporting
 
 // Get all expensens by user Id and house code
 router.get(
-  "/user/:id/:houseCode/all",
+  "/user/:userId/:houseCode/all",
   checkExpensesOwnershipAndHouseOwnership,
   getAllExpensesByUserInHouse
 );
@@ -60,7 +58,7 @@ router.get("/house/:houseCode/all", checkHouseOwnership, getAllExpensesByHouse);
 //get expense of current month by the user in a specific house
 
 router.get(
-  "/user/:id/:houseCode/currentMonth",
+  "/user/:userId/:houseCode/currentMonth",
   checkExpensesOwnershipAndHouseOwnership,
   getExpensesOfCurrentMonthByUserInHouse
 );
@@ -68,14 +66,14 @@ router.get(
 // get expense of current year by the user in a specific house
 
 router.get(
-  "/user/:id/:houseCode/currentYear",
+  "/user/:userId/:houseCode/currentYear",
   checkExpensesOwnershipAndHouseOwnership,
   getExpensesOfCurrentYearByUserInHouse
 );
 
 // // get expense of a specific year by the user in a specific house
 router.get(
-  "/user/:id/:houseCode/:year",
+  "/user/:userId/:houseCode/:year",
   checkExpensesOwnershipAndHouseOwnership,
   getExpensesOfSpecificYearByUserInHouse
 );
@@ -83,7 +81,7 @@ router.get(
 // get expenses of a specific month and year by the user in a specific house
 
 router.get(
-  "/user/:id/:houseCode/:year/:month",
+  "/user/:userId/:houseCode/:year/:month",
   checkExpensesOwnershipAndHouseOwnership,
   getExpensesOfSpecificMonthAndYearByUserInHouse
 );
@@ -93,7 +91,7 @@ router.get(
 router.get(
   "/house/:houseCode/currentMonth",
   checkHouseOwnership,
-  getExpensesOfCurrentMonthByHouse
+  getExpensesOfHouseByCurrentMonth
 );
 
 // get expense of a specific year in a specific house
