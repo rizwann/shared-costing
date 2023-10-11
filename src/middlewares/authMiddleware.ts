@@ -1,7 +1,9 @@
 // authMiddleware.ts
 
 import { NextFunction, Request, Response } from "express";
+import { get, merge } from "lodash";
 import Expense from "../models/Expense";
+import House from "../models/House";
 import User from "../models/User";
 
 export const checkExpenseOwnership = async (
@@ -11,23 +13,31 @@ export const checkExpenseOwnership = async (
 ) => {
   try {
     const { expenseId } = req.params;
-    const { userId } = req.body;
-    const expense = await Expense.findById(expenseId);
+    const userId = get(req, "identity._id") as unknown as string;
+    //get the expense by id and if it does not exist return 404, dont go to catch block
+    const expense = await Expense.findById(expenseId); // Find the expense by ID
 
     if (!expense) {
-      return res.status(404).json({ message: "Expense not found lah" });
+      return res.status(404).json({ message: "Expense not found" });
     }
 
     // Check if the user requesting the action is the owner
-    if (String(expense.user) !== userId) {
+    if (expense.user.toString() !== userId.toString()) {
       return res
         .status(403)
         .json({ message: "Unauthorized, you only can access your expenses!" });
     }
 
     next();
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
+    if (error.name === "ValidationError") {
+      return res.status(400).json({ message: error.message });
+    }
+    if (error.name === "CastError") {
+      return res
+        .status(400)
+        .json({ message: `Invalid value for ${error.path} was provided` });
+    }
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -39,6 +49,12 @@ export const checkExpensesOwnershipAndHouseOwnership = async (
 ) => {
   try {
     const { userId, houseCode } = req.params;
+    const currentUserId = get(req, "identity._id") as unknown as string;
+
+    if (userId !== currentUserId.toString())
+      return res
+        .status(403)
+        .json({ message: "Unauthorized, you only can access your expenses!" });
 
     const userHouses = await User.findById(userId).select("houseCodes");
 
@@ -62,7 +78,7 @@ export const checkHouseOwnership = async (
   try {
     const { houseCode } = req.params;
 
-    const { userId } = req.body;
+    const userId = get(req, "identity._id") as unknown as string;
 
     const userHouses = await User.findById(userId).select("houseCodes");
 
@@ -71,6 +87,116 @@ export const checkHouseOwnership = async (
         .status(403)
         .json({ message: "Unauthorized, you are not a member of this house" });
     }
+    next();
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const isAuthenticated = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const sessionToken = req.cookies["USER_AUTH"];
+
+    if (!sessionToken) {
+      return res.status(403).json({ message: "No session token" });
+    }
+
+    const existingUser = await User.findOne({
+      "authentication.sessionToken": sessionToken,
+    });
+
+    if (!existingUser) {
+      return res.status(403).json({ message: "Invalid session token" });
+    }
+
+    merge(req, { identity: existingUser });
+
+    return next();
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const isOwner = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { userId } = req.params;
+    const currentUserId = get(req, "identity._id") as unknown as string;
+
+    if (!currentUserId) {
+      return res
+        .status(403)
+        .json({ message: "Unauthorized, you are not allowed" });
+    }
+
+    if (userId.toString() !== currentUserId.toString()) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    next();
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const isHouseMember = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    const currentUserId = get(req, "identity._id") as unknown as string;
+
+    const house = await House.findById(id);
+
+    if (!house) {
+      return res.status(404).json({ message: "House not found" });
+    }
+
+    const houseMembers = house.users;
+
+    if (!houseMembers.includes(currentUserId)) {
+      return res
+        .status(403)
+        .json({ message: "Unauthorized, you are not a member of this house" });
+    }
+
+    next();
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const isAdmin = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const currentUserId = get(req, "identity._id") as unknown as string;
+
+    const user = await User.findById(currentUserId);
+
+    const admin = user?.username === "Rizwan";
+
+    if (!admin) {
+      return res
+        .status(403)
+        .json({ message: "Unauthorized, you are not a super user" });
+    }
+
     next();
   } catch (error) {
     console.error(error);

@@ -1,18 +1,15 @@
 import { Request, Response } from "express";
-import { validationResult } from "express-validator";
+import { get } from "lodash";
 import House from "../models/House";
 import User from "../models/User";
 
 export const createHouse = async (req: Request, res: Response) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ message: errors.array()[0].msg });
-    }
+    const currentUserId = get(req, "identity._id") as unknown as string;
+    console.log(currentUserId);
 
-    const { code, description, userId } = req.body;
+    const { code, description } = req.body;
     const image = req.file ? req.file.path : undefined;
-    // const userId = req.session?.user?._id; // Get the user ID from the session
 
     // Check for duplicate code or description
     const existingHouseWithCode = await House.findOne({ code });
@@ -26,10 +23,15 @@ export const createHouse = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Duplicate description" });
     }
 
-    const house = new House({ code, description, image, users: [userId] }); // Add user ID to the users array
+    const house = new House({
+      code,
+      description,
+      image,
+      users: [currentUserId],
+    }); // Add user ID to the users array
     await house.save();
     // add house code to user's houseCodes array
-    const user = await User.findById(userId);
+    const user = await User.findById(currentUserId);
     if (user) {
       user.houseCodes.push(code);
       await user.save();
@@ -45,6 +47,11 @@ export const createHouse = async (req: Request, res: Response) => {
 export const getHousesByUserId = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const currentUserId = get(req, "identity._id") as unknown as string;
+
+    if (String(currentUserId) !== id) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
 
     const houses = await House.find({ users: id });
 
@@ -62,16 +69,8 @@ export const getHousesByUserId = async (req: Request, res: Response) => {
 export const updateHouse = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { description, userId } = req.body;
+    const { description } = req.body;
     const image = req.file ? req.file.path : undefined;
-
-    // Check if the user is the owner of the house (check user id is in the house's users array)
-
-    const authority = await House.findOne({ _id: id, users: userId });
-
-    if (!authority) {
-      return res.status(403).json({ message: "Unauthorized" });
-    }
 
     const house = await House.findById(id);
 
@@ -107,17 +106,8 @@ export const updateHouse = async (req: Request, res: Response) => {
 export const deleteHouse = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { userId } = req.body;
 
     // Check if the user is the owner of the house (check user id is in the house's users array)
-
-    const authority = await House.findOne({ _id: id, users: userId });
-
-    if (!authority) {
-      return res
-        .status(403)
-        .json({ message: "Unauthorized, you can't delete this house" });
-    }
 
     const house = await House.findById(id);
 
@@ -135,7 +125,8 @@ export const deleteHouse = async (req: Request, res: Response) => {
 
 export const joinHouse = async (req: Request, res: Response) => {
   try {
-    const { houseCode, userId } = req.body;
+    const { houseCode } = req.body;
+    const userId = get(req, "identity._id") as unknown as string;
 
     // Find the house with the provided code
     const house = await House.findOne({ code: houseCode });
@@ -153,8 +144,10 @@ export const joinHouse = async (req: Request, res: Response) => {
       if (!user.houseCodes.includes(houseCode)) {
         user.houseCodes.push(houseCode); // Add the house code to user's houseCodes array
         await user.save();
-        house.users.push(user._id); // Add the user to the house's users array
-        await house.save();
+        if (!house.users.includes(user._id)) {
+          house.users.push(user._id); // Add the user to the house's users array
+          await house.save();
+        }
         res.status(200).json({ message: "Joined house successfully" });
       } else {
         res.status(400).json({ message: "User is already in the house" });
@@ -170,4 +163,62 @@ export const joinHouse = async (req: Request, res: Response) => {
   }
 };
 
-// export const leaveHouse = async (req: Request, res: Response) => {
+export const getAllHouses = async (req: Request, res: Response) => {
+  try {
+    const houses = await House.find();
+
+    if (!houses) {
+      return res.status(404).json({ message: "No houses found" });
+    }
+
+    res.status(200).json(houses);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const leaveHouse = async (req: Request, res: Response) => {
+  try {
+    const { houseCode } = req.body;
+    const userId = get(req, "identity._id") as unknown as string;
+
+    // Find the house with the provided code
+    const house = await House.findOne({ code: houseCode });
+
+    if (!house) {
+      return res.status(404).json({ message: "House not found" });
+    }
+
+    // Remove the user from house
+
+    const user = await User.findById(userId);
+
+    if (user) {
+      // Check if the user is not already in the house
+      if (user.houseCodes.includes(houseCode)) {
+        //remove the house code from user's houseCodes array
+        user.houseCodes = user.houseCodes.filter((code) => code !== houseCode);
+
+        await user.save();
+
+        //remove the user from the house's users array, direct assigning not working
+        house.users = house.users.filter(
+          (id) => id.toString() !== user._id.toString()
+        );
+
+        await house.save();
+        res.status(200).json({ message: "Left house successfully" });
+      } else {
+        res.status(400).json({ message: "User is not in the house" });
+      }
+    } else {
+      res.status(401).json({
+        message: "You are not registered with us... who the fuck are you!!!",
+      });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};

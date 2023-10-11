@@ -1,7 +1,7 @@
 // authRoutes.ts
 import express from "express";
 import { check } from "express-validator";
-import { loginUser, registerUser } from "../controllers/authControllers"; // Import controller functions
+import { login, logout, regUser } from "../controllers/authControllers"; // Import controller functions
 
 const router = express.Router();
 
@@ -15,21 +15,25 @@ router.post(
       min: 6,
     }),
   ],
-  registerUser
+  regUser
 );
 
 // Login route
-router.post("/login", loginUser);
+router.post("/login", login);
 
 // Logout route
-router.get("/logout", (req, res) => {
-  req.session.destroy((err) => {
-    if (err) {
-      return res.status(500).json({ message: "Server error" });
-    }
-    res.clearCookie("sid");
-    res.status(200).json({ message: "User logged out" });
-  });
-});
+
+router.get("/logout", logout);
+
+// Logout route
+// router.get("/logout", (req, res) => {
+//   req.session.destroy((err) => {
+//     if (err) {
+//       return res.status(500).json({ message: "Server error" });
+//     }
+//     res.clearCookie("sid");
+//     res.status(200).json({ message: "User logged out" });
+//   });
+// });
 
 export default router;

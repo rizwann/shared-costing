@@ -1,11 +1,13 @@
 import { Request, Response } from "express";
+import { get } from "lodash";
 import Expense from "../models/Expense";
 import User from "../models/User";
 
 // Create a new expense
 export const createExpense = async (req: Request, res: Response) => {
   try {
-    const { store, cost, category, description, houseCode, userId } = req.body;
+    const { store, cost, category, description, houseCode } = req.body;
+    const userId = get(req, "identity._id") as unknown as string;
 
     const userHouses = await User.findById(userId).select("houseCodes");
 
@@ -63,8 +65,15 @@ export const getExpenseById = async (req: Request, res: Response) => {
     }
 
     res.status(200).json(expense);
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
+    if (error.name === "ValidationError") {
+      return res.status(400).json({ message: error.message });
+    }
+    if (error.name === "CastError") {
+      return res
+        .status(400)
+        .json({ message: `Invalid ${error.path}: ${error.value}` });
+    }
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -114,6 +123,13 @@ export const deleteExpense = async (req: Request, res: Response) => {
 export const getAllExpensesByUser = async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
+    const currentUserId = get(req, "identity._id") as unknown as string;
+
+    if (userId !== currentUserId.toString())
+      return res
+        .status(403)
+        .json({ message: "Unauthorized, you only can access your expenses!" });
+
     const expenses = await Expense.find({ user: userId });
 
     if (!expenses) {
@@ -141,8 +157,7 @@ export const getAllExpensesByUserInHouse = async (
 ) => {
   try {
     const { userId, houseCode } = req.params;
-    // const expenses = await Expense.find({ user: id, houseCode: houseCode });
-    // here houseCode is a string and have to check if it is in the user's houseCodes array
+
     const expenses = await Expense.find({ user: userId, houseCode: houseCode });
 
     if (!expenses) {

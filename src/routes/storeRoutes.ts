@@ -6,7 +6,9 @@ import {
   deleteStore,
   getStoreById,
   getStores,
+  updateStore,
 } from "../controllers/storeControllers";
+import { isAuthenticated } from "../middlewares/authMiddleware";
 
 const router = express.Router();
 
@@ -22,7 +24,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-//router.use(isAuthenticated);
+router.use(isAuthenticated);
 
 // Create a new store with image upload
 router.post("/create", upload.single("image"), createStore);
@@ -34,7 +36,7 @@ router.get("/", getStores);
 router.get("/:id", getStoreById);
 
 // Update a store by ID
-router.put("/:id", upload.single("image"), getStoreById);
+router.put("/:id", upload.single("image"), updateStore);
 
 // Delete a store by ID
 router.delete("/:id", deleteStore);

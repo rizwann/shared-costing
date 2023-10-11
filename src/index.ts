@@ -1,4 +1,6 @@
 import bodyParser from "body-parser";
+import compression from "compression";
+import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
 import mongoose from "mongoose";
@@ -6,6 +8,7 @@ import authRoutes from "./routes/authRoutes";
 import expenseRoutes from "./routes/expenseRoutes";
 import houseRoutes from "./routes/houseRoutes";
 import storeRoutes from "./routes/storeRoutes";
+import userRoutes from "./routes/userRoutes";
 
 const app = express();
 
@@ -13,6 +16,8 @@ const app = express();
 require("dotenv").config();
 
 // Middleware
+app.use(compression());
+app.use(cookieParser());
 app.use(bodyParser.json()); // Parse JSON requests
 app.use(cors());
 const port = 3000;
@@ -28,8 +33,9 @@ app.use("/api/auth", authRoutes);
 app.use("/api/houses", houseRoutes);
 app.use("/api/stores", storeRoutes);
 app.use("/api/expenses", expenseRoutes);
+app.use("/api/user", userRoutes);
 
-db.on("error", (err) => {
+db.on("error", (err: Error) => {
   console.error("MongoDB connection error:", err);
 });
 

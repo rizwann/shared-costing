@@ -1,13 +1,19 @@
 import express from "express";
-import { check } from "express-validator";
 import multer from "multer";
 import {
   createHouse,
   deleteHouse,
+  getAllHouses,
   getHousesByUserId,
   joinHouse,
+  leaveHouse,
   updateHouse,
 } from "../controllers/houseControllers";
+import {
+  isAdmin,
+  isAuthenticated,
+  isHouseMember,
+} from "../middlewares/authMiddleware";
 
 const router = express.Router();
 
@@ -22,30 +28,31 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage });
-//router.use(isAuthenticated);
+
+router.use(isAuthenticated);
 
 // Create a new house with image upload
 router.post(
   "/create",
-  [
-    check("code", "Code must be at least 6 characters long").isLength({
-      min: 6,
-    }),
-  ],
+
   upload.single("image"),
   createHouse
 );
-
+// Get all houses
+router.get("/", isAdmin, getAllHouses);
 // Get a house by ID
 router.get("/:id", getHousesByUserId);
 
 // Update a house by ID
-router.put("/:id", upload.single("image"), updateHouse);
+router.put("/:id", isHouseMember, upload.single("image"), updateHouse);
 
 // Delete a house by ID
-router.delete("/:id", deleteHouse);
+router.delete("/:id", isHouseMember, deleteHouse);
 
 // join a house
 router.post("/join-house", joinHouse);
+
+// Leave a house
+router.post("/leave-house", leaveHouse);
 
 export default router;

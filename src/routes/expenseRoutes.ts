@@ -19,11 +19,12 @@ import {
   checkExpenseOwnership,
   checkExpensesOwnershipAndHouseOwnership,
   checkHouseOwnership,
+  isAuthenticated,
 } from "../middlewares/authMiddleware";
 
 const router = express.Router();
 
-// router.use(isAuthenticated);
+router.use(isAuthenticated);
 
 // Create a new expense
 router.post("/create", createExpense);
@@ -38,7 +39,7 @@ router.get("/:expenseId", checkExpenseOwnership, getExpenseById);
 router.get("/user/:userId", getAllExpensesByUser);
 
 // Update an expense by ID
-router.put("/edit/:expenseId", checkExpenseOwnership, updateExpense);
+router.put("/:expenseId", checkExpenseOwnership, updateExpense);
 
 // Delete an expense by ID
 router.delete("/:expenseId", checkExpenseOwnership, deleteExpense);
