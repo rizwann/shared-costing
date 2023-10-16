@@ -1,4 +1,4 @@
-import express from "express";
+import { Router } from "express";
 import multer from "multer";
 
 import {
@@ -10,12 +10,19 @@ import {
 } from "../controllers/storeControllers";
 import { isAuthenticated } from "../middlewares/authMiddleware";
 
-const router = express.Router();
-
+const router = Router();
+// destination: (req, file, cb) => {
+//   cb(null, "images");
+// },
+// filename: (req, file, cb) => {
+//   cb(null, req.body.name );
+//   console.log(req.body.name)
+// },
+// });
 // Multer configuration for handling image uploads
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => {
-    cb(null, "uploads/");
+    cb(null, "uploads");
   },
   filename: (req, _file, cb) => {
     cb(null, Date.now() + "-" + req.body.name); // Define the file name

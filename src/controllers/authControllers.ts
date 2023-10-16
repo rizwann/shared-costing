@@ -122,7 +122,9 @@ export const login = async (req: Request, res: Response) => {
     const user = await User.findOne({ email });
 
     if (!user) {
-      return res.status(400).json({ message: "Invalid Email Provided" });
+      return res
+        .status(400)
+        .json({ message: "Email is not registered. Please, try again" });
     }
 
     const passwordMatch = await bcrypt.compare(
@@ -130,7 +132,9 @@ export const login = async (req: Request, res: Response) => {
       user.authentication.password
     );
     if (!passwordMatch) {
-      return res.status(403).json({ message: "Invalid Credentials" });
+      return res
+        .status(403)
+        .json({ message: "Email and password don't match. Please, try again" });
     }
 
     const sessionToken = random();
@@ -142,7 +146,6 @@ export const login = async (req: Request, res: Response) => {
       domain: "localhost",
       path: "/",
     });
-
     res.status(200).json({ message: "Login successful", user: user });
   } catch (error) {
     console.log(error);
@@ -177,4 +180,34 @@ export const logout = async (req: Request, res: Response) => {
     console.log(error);
     res.status(400).json({ message: "Server error" });
   }
+};
+
+export const authCheck = async (req: Request, res: Response) => {
+  const { email } = req.body;
+  const sessionToken = req.cookies["USER_AUTH"];
+
+  if (!sessionToken) {
+    return res
+      .status(400)
+      .json({ isAuthenticated: false, message: "No session token" });
+  }
+  // find the user with this session token and email
+  const user = await User.findOne({
+    "authentication.sessionToken": sessionToken,
+    email: email,
+  });
+
+  if (!user) {
+    return res.status(400).json({
+      isAuthenticated: false,
+      message: "Invalid session token, Login again",
+    });
+  }
+  user.authentication.sessionToken = sessionToken;
+
+  return res.status(200).json({
+    isAuthenticated: true,
+    message: "User authenticated",
+    user,
+  });
 };

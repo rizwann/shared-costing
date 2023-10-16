@@ -15,11 +15,18 @@ const app = express();
 // Load environment variables from .env file
 require("dotenv").config();
 
+var corsOptions = {
+  origin: "http://localhost:5173",
+  credentials: true,
+  optionsSuccessStatus: 200, // some legacy browsers (IE11, various SmartTVs) choke on 204
+};
+
 // Middleware
+app.use(cors(corsOptions));
+app.use("/uploads", express.static("uploads"));
 app.use(compression());
 app.use(cookieParser());
 app.use(bodyParser.json()); // Parse JSON requests
-app.use(cors());
 const port = 3000;
 const mongoURI = process.env.MONGODB_URI as string;
 
@@ -41,7 +48,6 @@ db.on("error", (err: Error) => {
 
 db.once("open", () => {
   console.log("Connected to MongoDB");
-  // Start your Express server here
   app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
   });
