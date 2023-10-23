@@ -1,14 +1,10 @@
 import { Request, Response } from "express";
-import { get } from "lodash";
 import House from "../models/House";
-import User from "../models/User";
+import { User } from "../models/User";
 
 export const createHouse = async (req: Request, res: Response) => {
   try {
-    const currentUserId = get(req, "identity._id") as unknown as string;
-    console.log(currentUserId);
-
-    const { code, description } = req.body;
+    const { code, description, userId } = req.body;
     const image = req.file ? req.file.path : undefined;
 
     // Check for duplicate code or description
@@ -27,11 +23,11 @@ export const createHouse = async (req: Request, res: Response) => {
       code,
       description,
       image,
-      users: [currentUserId],
+      users: [userId],
     }); // Add user ID to the users array
     await house.save();
     // add house code to user's houseCodes array
-    const user = await User.findById(currentUserId);
+    const user = await User.findById(userId);
     if (user) {
       user.houseCodes.push(code);
       await user.save();
@@ -46,14 +42,9 @@ export const createHouse = async (req: Request, res: Response) => {
 
 export const getHousesByUserId = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    const currentUserId = get(req, "identity._id") as unknown as string;
+    const currentUserId = req.body.userId;
 
-    if (String(currentUserId) !== id) {
-      return res.status(403).json({ message: "Unauthorized" });
-    }
-
-    const houses = await House.find({ users: id });
+    const houses = await House.find({ users: currentUserId });
 
     if (!houses) {
       return res.status(404).json({ message: "Houses not found" });
@@ -125,8 +116,7 @@ export const deleteHouse = async (req: Request, res: Response) => {
 
 export const joinHouse = async (req: Request, res: Response) => {
   try {
-    const { houseCode } = req.body;
-    const userId = get(req, "identity._id") as unknown as string;
+    const { houseCode, userId } = req.body;
 
     // Find the house with the provided code
     const house = await House.findOne({ code: houseCode });
@@ -165,6 +155,7 @@ export const joinHouse = async (req: Request, res: Response) => {
 
 export const getAllHouses = async (req: Request, res: Response) => {
   try {
+    console.log(req.body);
     const houses = await House.find();
 
     if (!houses) {
@@ -180,8 +171,7 @@ export const getAllHouses = async (req: Request, res: Response) => {
 
 export const leaveHouse = async (req: Request, res: Response) => {
   try {
-    const { houseCode } = req.body;
-    const userId = get(req, "identity._id") as unknown as string;
+    const { houseCode, userId } = req.body;
 
     // Find the house with the provided code
     const house = await House.findOne({ code: houseCode });

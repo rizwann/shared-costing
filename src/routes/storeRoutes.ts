@@ -8,7 +8,7 @@ import {
   getStores,
   updateStore,
 } from "../controllers/storeControllers";
-import { isAuthenticated } from "../middlewares/authMiddleware";
+import { authMiddleware } from "../middlewares/authMiddleware";
 
 const router = Router();
 // destination: (req, file, cb) => {
@@ -31,10 +31,10 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-router.use(isAuthenticated);
+router.use(authMiddleware);
 
 // Create a new store with image upload
-router.post("/create", upload.single("image"), createStore);
+router.post("/create", upload.single("image"), authMiddleware, createStore);
 
 // Get all hstore
 router.get("/", getStores);
@@ -43,7 +43,7 @@ router.get("/", getStores);
 router.get("/:id", getStoreById);
 
 // Update a store by ID
-router.put("/:id", upload.single("image"), updateStore);
+router.put("/:id", upload.single("image"), authMiddleware, updateStore);
 
 // Delete a store by ID
 router.delete("/:id", deleteStore);

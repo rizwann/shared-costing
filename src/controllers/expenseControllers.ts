@@ -1,13 +1,11 @@
 import { Request, Response } from "express";
-import { get } from "lodash";
 import Expense from "../models/Expense";
-import User from "../models/User";
+import { User } from "../models/User";
 
 // Create a new expense
 export const createExpense = async (req: Request, res: Response) => {
   try {
-    const { store, cost, category, description, houseCode } = req.body;
-    const userId = get(req, "identity._id") as unknown as string;
+    const { store, cost, category, description, houseCode, userId } = req.body;
 
     const userHouses = await User.findById(userId).select("houseCodes");
 
@@ -123,7 +121,7 @@ export const deleteExpense = async (req: Request, res: Response) => {
 export const getAllExpensesByUser = async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
-    const currentUserId = get(req, "identity._id") as unknown as string;
+    const currentUserId = req.body.userId;
 
     if (userId !== currentUserId.toString())
       return res
@@ -208,7 +206,6 @@ export const getExpensesOfCurrentMonthByUserInHouse = async (
 ) => {
   try {
     const { userId, houseCode } = req.params;
-    console.log(houseCode);
     const expenses = await Expense.find({ user: userId, houseCode: houseCode });
 
     if (!expenses) {

@@ -10,8 +10,8 @@ import {
   updateHouse,
 } from "../controllers/houseControllers";
 import {
+  authMiddleware,
   isAdmin,
-  isAuthenticated,
   isHouseMember,
 } from "../middlewares/authMiddleware";
 
@@ -29,22 +29,29 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-router.use(isAuthenticated);
+router.use(authMiddleware);
 
 // Create a new house with image upload
 router.post(
   "/create",
 
   upload.single("image"),
+  authMiddleware,
   createHouse
 );
 // Get all houses
-router.get("/", isAdmin, getAllHouses);
+router.get("/all", isAdmin, getAllHouses);
 // Get a house by ID
-router.get("/:id", getHousesByUserId);
+router.get("/", getHousesByUserId);
 
 // Update a house by ID
-router.put("/:id", isHouseMember, upload.single("image"), updateHouse);
+router.put(
+  "/:id",
+
+  isHouseMember,
+  upload.single("image"),
+  updateHouse
+);
 
 // Delete a house by ID
 router.delete("/:id", isHouseMember, deleteHouse);

@@ -3,75 +3,78 @@ import bcrypt from "bcrypt";
 
 import { Request, Response } from "express";
 import { validationResult } from "express-validator";
-import { random } from "../helpers";
-import User, { createUser } from "../models/User";
-export const registerUser = async (req: Request, res: Response) => {
-  try {
-    // Validate user input
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
+import jwt from "jsonwebtoken";
+import { User } from "../models/User";
 
-    const { username, email, password } = req.body;
+// export const registerUser = async (req: Request, res: Response) => {
+//   try {
+//     // Validate user input
+//     const errors = validationResult(req);
+//     if (!errors.isEmpty()) {
+//       return res.status(400).json({ errors: errors.array() });
+//     }
 
-    // Check if the user already exists
-    let user = await User.findOne({ email });
-    if (user) {
-      return res.status(400).json({ message: "User already exists" });
-    }
+//     const { username, email, password } = req.body;
 
-    // Hash the password
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
+//     // Check if the user already exists
+//     let user = await User.findOne({ email });
+//     if (user) {
+//       return res.status(400).json({ message: "User already exists" });
+//     }
 
-    // Create a new user
-    user = new User({
-      username,
-      email,
-      authentication: { password: hashedPassword },
-    });
-    await user.save();
+//     // Hash the password
+//     const saltRounds = 10;
+//     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    res.status(201).json({ message: "User registered successfully" });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
-  }
-};
+//     // Create a new user
+//     user = new User({
+//       username,
+//       email,
+//       authentication: { password: hashedPassword },
+//     });
+//     await user.save();
 
-export const loginUser = async (req: Request, res: Response) => {
-  try {
-    const { email, password } = req.body;
+//     res.status(201).json({ message: "User registered successfully" });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ message: "Server error" });
+//   }
+// };
 
-    // Check if the user exists
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+// export const loginUser = async (req: Request, res: Response) => {
+//   try {
+//     const { email, password } = req.body;
 
-    // Compare passwords
-    const passwordMatch = await bcrypt.compare(
-      password,
-      user?.authentication?.password
-    );
-    if (!passwordMatch) {
-      return res.status(403).json({ message: "Invalid credentials" });
-    }
-    const loggedInUser = {
-      _id: user._id,
-      username: user.username,
-      email: user.email,
-    };
+//     // Check if the user exists
+//     const user = await User.findOne({ email });
+//     if (!user) {
+//       return res.status(404).json({ message: "User not found" });
+//     }
 
-    res.status(200).json({ message: "Login successful", user: loggedInUser });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
-  }
-};
+//     // Compare passwords
+//     const passwordMatch = await bcrypt.compare(
+//       password,
+//       user?.authentication?.password
+//     );
+//     if (!passwordMatch) {
+//       return res.status(403).json({ message: "Invalid credentials" });
+//     }
+//     const loggedInUser = {
+//       _id: user._id,
+//       username: user.username,
+//       email: user.email,
+//     };
+
+//     res.status(200).json({ message: "Login successful", user: loggedInUser });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ message: "Server error" });
+//   }
+// };
 
 export const regUser = async (req: Request, res: Response) => {
+  const { username, email, password } = req.body;
+
   try {
     // Validate user input
     const errors = validationResult(req);
@@ -79,27 +82,29 @@ export const regUser = async (req: Request, res: Response) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { username, email, password } = req.body;
-
     // Check if the user already exists, username and email must be unique
+    const existingUser = await User.findOne({ $or: [{ username }, { email }] });
 
-    let existingUserWithEmail = await User.findOne({ email });
-    if (existingUserWithEmail) {
-      return res.status(400).json({ message: "Email already registered" });
-    }
-    let existingUserWithUsername = await User.findOne({ username });
-    if (existingUserWithUsername) {
-      return res.status(400).json({ message: "Username already registered" });
+    if (existingUser) {
+      if (existingUser.username === username) {
+        return res.status(400).json({ message: "Username already exists" });
+      } else {
+        return res.status(400).json({ message: "Email already in use" });
+      }
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = await createUser({
+
+    const user = new User({
       username,
       email,
-      authentication: {
-        password: hashedPassword,
-      },
+      password: hashedPassword,
     });
+
+    console.log(user);
+
+    await user.save();
+
     return res
       .status(201)
       .json({ message: "User registered successfully", user: user })
@@ -110,104 +115,68 @@ export const regUser = async (req: Request, res: Response) => {
 };
 
 export const login = async (req: Request, res: Response) => {
-  try {
-    const { email, password } = req.body;
+  const { email, password, username } = req.body;
 
-    if (!email || !password) {
+  try {
+    if (!(email || username) || !password) {
       return res
         .status(400)
-        .json({ message: "Please provide email and password" });
+        .json({ message: "Please provide email/username and password" });
     }
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({
+      $or: [{ email }, { username }],
+    });
 
     if (!user) {
-      return res
-        .status(400)
-        .json({ message: "Email is not registered. Please, try again" });
+      return res.status(400).json({ message: "User not found" });
     }
 
-    const passwordMatch = await bcrypt.compare(
-      password,
-      user.authentication.password
-    );
-    if (!passwordMatch) {
-      return res
-        .status(403)
-        .json({ message: "Email and password don't match. Please, try again" });
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    const sessionToken = random();
-    user.authentication.sessionToken = sessionToken;
-
-    await user.save();
-
-    res.cookie("USER_AUTH", user.authentication.sessionToken, {
-      domain: "localhost",
-      path: "/",
+    const token = jwt.sign({ userId: user._id }, "your-secret-key", {
+      expiresIn: "1y",
     });
-    res.status(200).json({ message: "Login successful", user: user });
+
+    res.cookie("USER_TOKEN", token);
+
+    return res.status(200).json({ token, user });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-export const logout = async (req: Request, res: Response) => {
-  try {
-    const sessionToken = req.cookies["USER_AUTH"];
+// export const authCheck = async (req: Request, res: Response) => {
+//   const { email } = req.body;
+//   const sessionToken = req.cookies["USER_AUTH"];
 
-    if (!sessionToken) {
-      return res.status(400).json({ message: "No session token" });
-    }
+//   if (!sessionToken) {
+//     return res
+//       .status(400)
+//       .json({ isAuthenticated: false, message: "No session token" });
+//   }
+//   // find the user with this session token and email
+//   const user = await User.findOne({
+//     "authentication.sessionToken": sessionToken,
+//     email: email,
+//   });
 
-    const user = await User.findOne({
-      "authentication.sessionToken": sessionToken,
-    });
+//   if (!user) {
+//     return res.status(400).json({
+//       isAuthenticated: false,
+//       message: "Invalid session token, Login again",
+//     });
+//   }
+//   user.authentication.sessionToken = sessionToken;
 
-    if (!user) {
-      return res.status(400).json({ message: "Invalid session token" });
-    }
-
-    user.authentication.sessionToken = "";
-
-    await user.save();
-
-    res.clearCookie("USER_AUTH");
-
-    res.status(200).json({ message: "Logout successful" });
-  } catch (error) {
-    console.log(error);
-    res.status(400).json({ message: "Server error" });
-  }
-};
-
-export const authCheck = async (req: Request, res: Response) => {
-  const { email } = req.body;
-  const sessionToken = req.cookies["USER_AUTH"];
-
-  if (!sessionToken) {
-    return res
-      .status(400)
-      .json({ isAuthenticated: false, message: "No session token" });
-  }
-  // find the user with this session token and email
-  const user = await User.findOne({
-    "authentication.sessionToken": sessionToken,
-    email: email,
-  });
-
-  if (!user) {
-    return res.status(400).json({
-      isAuthenticated: false,
-      message: "Invalid session token, Login again",
-    });
-  }
-  user.authentication.sessionToken = sessionToken;
-
-  return res.status(200).json({
-    isAuthenticated: true,
-    message: "User authenticated",
-    user,
-  });
-};
+//   return res.status(200).json({
+//     isAuthenticated: true,
+//     message: "User authenticated",
+//     user,
+//   });
+// };

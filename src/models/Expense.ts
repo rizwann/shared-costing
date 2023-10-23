@@ -9,6 +9,14 @@ export interface IExpense extends Document {
   houseCode: string; // House id to which the expense is assigned
   date: Date;
 }
+enum CategoryName {
+  Other = "Other",
+  Grocery = "Grocery",
+  Restaurant = "Restaurant",
+  Clothing = "Clothing",
+  Entertainment = "Entertainment",
+  Butcher = "Butcher",
+}
 
 const ExpenseSchema: Schema = new Schema({
   store: {
@@ -22,8 +30,10 @@ const ExpenseSchema: Schema = new Schema({
   },
   category: {
     type: String,
+    enum: Object.values(CategoryName),
     required: true,
   },
+
   description: {
     type: String,
     required: true,

@@ -16,15 +16,15 @@ import {
   updateExpense,
 } from "../controllers/expenseControllers";
 import {
+  authMiddleware,
   checkExpenseOwnership,
   checkExpensesOwnershipAndHouseOwnership,
   checkHouseOwnership,
-  isAuthenticated,
 } from "../middlewares/authMiddleware";
 
 const router = express.Router();
 
-router.use(isAuthenticated);
+router.use(authMiddleware);
 
 // Create a new expense
 router.post("/create", createExpense);

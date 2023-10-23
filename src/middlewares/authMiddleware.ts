@@ -1,10 +1,33 @@
 // authMiddleware.ts
 
 import { NextFunction, Request, Response } from "express";
-import { get, merge } from "lodash";
+import jwt from "jsonwebtoken";
 import Expense from "../models/Expense";
 import House from "../models/House";
-import User from "../models/User";
+import { User } from "../models/User";
+
+export const authMiddleware = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  // const token = req.headers.authorization;
+  const token = req.cookies["USER_TOKEN"];
+  if (!token) {
+    return res.status(401).json({ message: "Unauthorized, no token found" });
+  }
+
+  try {
+    const decoded: any = jwt.verify(token, "your-secret-key");
+
+    req.body.userId = decoded.userId;
+    console.log("from auth", req.body);
+
+    next();
+  } catch (error) {
+    return res.status(401).json({ message: "Unauthorized!" });
+  }
+};
 
 export const checkExpenseOwnership = async (
   req: Request,
@@ -13,7 +36,7 @@ export const checkExpenseOwnership = async (
 ) => {
   try {
     const { expenseId } = req.params;
-    const userId = get(req, "identity._id") as unknown as string;
+    const userId = req.body.userId;
     //get the expense by id and if it does not exist return 404, dont go to catch block
     const expense = await Expense.findById(expenseId); // Find the expense by ID
 
@@ -49,7 +72,7 @@ export const checkExpensesOwnershipAndHouseOwnership = async (
 ) => {
   try {
     const { userId, houseCode } = req.params;
-    const currentUserId = get(req, "identity._id") as unknown as string;
+    const currentUserId = req.body.userId;
 
     if (userId !== currentUserId.toString())
       return res
@@ -78,7 +101,7 @@ export const checkHouseOwnership = async (
   try {
     const { houseCode } = req.params;
 
-    const userId = get(req, "identity._id") as unknown as string;
+    const userId = req.body.userId;
 
     const userHouses = await User.findById(userId).select("houseCodes");
 
@@ -94,34 +117,34 @@ export const checkHouseOwnership = async (
   }
 };
 
-export const isAuthenticated = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const sessionToken = req.cookies["USER_AUTH"];
+// export const isAuthenticated = async (
+//   req: Request,
+//   res: Response,
+//   next: NextFunction
+// ) => {
+//   try {
+//     const sessionToken = req.cookies["USER_AUTH"];
 
-    if (!sessionToken) {
-      return res.status(403).json({ message: "No session token" });
-    }
+//     if (!sessionToken) {
+//       return res.status(403).json({ message: "No session token" });
+//     }
 
-    const existingUser = await User.findOne({
-      "authentication.sessionToken": sessionToken,
-    });
+//     const existingUser = await User.findOne({
+//       "authentication.sessionToken": sessionToken,
+//     });
 
-    if (!existingUser) {
-      return res.status(403).json({ message: "Invalid session token" });
-    }
+//     if (!existingUser) {
+//       return res.status(403).json({ message: "Invalid session token" });
+//     }
 
-    merge(req, { identity: existingUser });
+//     merge(req, { identity: existingUser });
 
-    return next();
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "Server error" });
-  }
-};
+//     return next();
+//   } catch (error) {
+//     console.error(error);
+//     return res.status(500).json({ message: "Server error" });
+//   }
+// };
 
 export const isOwner = async (
   req: Request,
@@ -130,7 +153,7 @@ export const isOwner = async (
 ) => {
   try {
     const { userId } = req.params;
-    const currentUserId = get(req, "identity._id") as unknown as string;
+    const currentUserId = req.body.userId;
 
     if (!currentUserId) {
       return res
@@ -156,7 +179,7 @@ export const isHouseMember = async (
 ) => {
   try {
     const { id } = req.params;
-    const currentUserId = get(req, "identity._id") as unknown as string;
+    const currentUserId = req.body.userId;
 
     const house = await House.findById(id);
 
@@ -185,7 +208,7 @@ export const isAdmin = async (
   next: NextFunction
 ) => {
   try {
-    const currentUserId = get(req, "identity._id") as unknown as string;
+    const currentUserId = req.body.userId;
 
     const user = await User.findById(currentUserId);
 

@@ -1,12 +1,7 @@
 // authRoutes.ts
 import express from "express";
 import { check } from "express-validator";
-import {
-  authCheck,
-  login,
-  logout,
-  regUser,
-} from "../controllers/authControllers"; // Import controller functions
+import { login, regUser } from "../controllers/authControllers"; // Import controller functions
 
 const router = express.Router();
 
@@ -24,13 +19,13 @@ router.post(
 );
 
 //authCheck route
-router.post("/auth-check", authCheck);
+// router.post("/auth-check", authCheck);
 
 // Login route
 router.post("/login", login);
 
 // Logout route
 
-router.get("/logout", logout);
+// router.get("/logout", logout);
 
 export default router;

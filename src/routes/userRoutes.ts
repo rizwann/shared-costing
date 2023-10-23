@@ -2,20 +2,22 @@ import { Router } from "express";
 import {
   getAllUsers,
   getUserById,
-  updateUserById,
+  updateUserPassword,
+  updateUsernameEmail,
 } from "../controllers/userController";
 import {
+  authMiddleware,
   isAdmin,
-  isAuthenticated,
   isOwner,
 } from "../middlewares/authMiddleware";
 
 const router = Router();
 
-router.use(isAuthenticated);
+router.use(authMiddleware);
 
 router.get("/all", isAdmin, getAllUsers);
 router.get("/:userId", isOwner, getUserById);
-router.put("/:userId", isOwner, updateUserById);
+router.put("/:userId", isOwner, updateUsernameEmail);
+router.put("/:userId/change-password", isOwner, updateUserPassword);
 
 export default router;

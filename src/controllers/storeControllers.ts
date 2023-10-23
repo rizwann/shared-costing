@@ -73,7 +73,7 @@ export const updateStore = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Duplicate name" });
     }
 
-    store.name = name;
+    store.name = name ? name : store.name;
     if (image) {
       store.image = image;
     }
