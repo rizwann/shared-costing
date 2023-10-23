@@ -19,10 +19,7 @@ export const authMiddleware = (
 
   try {
     const decoded: any = jwt.verify(token, "your-secret-key");
-
     req.body.userId = decoded.userId;
-    console.log("from auth", req.body);
-
     next();
   } catch (error) {
     return res.status(401).json({ message: "Unauthorized!" });

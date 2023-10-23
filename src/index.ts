@@ -42,6 +42,8 @@ app.use("/api/stores", storeRoutes);
 app.use("/api/expenses", expenseRoutes);
 app.use("/api/user", userRoutes);
 
+//test get request
+
 db.on("error", (err: Error) => {
   console.error("MongoDB connection error:", err);
 });

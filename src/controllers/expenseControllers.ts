@@ -454,3 +454,115 @@ export const getExpensesOfSpecificMonthAndYearByHouse = async (
     res.status(500).json({ message: "Server error" });
   }
 };
+
+export const calculateHouseExpensesAndDebts = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const { houseCode, month, year } = req.params;
+
+    // Find all expenses for the given house
+    const allExpenses = await Expense.find({ houseCode });
+    const date = new Date();
+    const currentMonth = date.getMonth();
+    const currentYear = date.getFullYear();
+    // check which expenses has date property
+    // Todo: remove this after adding date property to all expenses
+    const expenses =
+      month && year
+        ? allExpenses.filter(
+            (expense) =>
+              expense.date.getFullYear() === Number(year) &&
+              expense.date.getMonth() === Number(month) - 1
+          )
+        : allExpenses.filter(
+            (expense) =>
+              expense.date.getMonth() === currentMonth &&
+              expense.date.getFullYear() === currentYear
+          );
+
+    // Find all users in the house
+    const houseMembers = await User.find({ houseCodes: houseCode });
+
+    if (!expenses || !houseMembers) {
+      return res
+        .status(404)
+        .json({ message: "Data not found for the given house" });
+    }
+
+    // Calculate the total monthly cost
+    let totalMonthlyCost = expenses.reduce(
+      (total, expense) => total + expense.cost,
+      0
+    );
+    totalMonthlyCost = Number(totalMonthlyCost.toFixed(2));
+
+    // Calculate the share per member
+    let equalShare = totalMonthlyCost / houseMembers.length;
+
+    equalShare = Number(equalShare.toFixed(2));
+
+    const payments = {} as Record<string, number>;
+
+    // Calculate the actual expenses by each user
+    const actualCostByUser: { [username: string]: number } = {};
+    // Calculate user's expenses for the month by iterating over house members and matching the user id with the expense user id
+    houseMembers.forEach((user) => {
+      const userExpenses = expenses.filter(
+        (expense) => expense.user.toString() === user._id.toString()
+      );
+      let userTotalExpense = 0;
+      userExpenses.forEach((expense) => {
+        userTotalExpense += expense.cost;
+      });
+      actualCostByUser[user.username] = userTotalExpense;
+    });
+
+    // Calculate payments
+    for (const member of houseMembers) {
+      let balance = equalShare - actualCostByUser[member.username];
+      payments[member.username] = Number(balance.toFixed(2));
+    }
+
+    // Initialize an object to store payment instructions
+    const paymentsCopy = { ...payments };
+
+    // Initialize an object to store payment instructions
+
+    const paymentInstructions: Record<string, Record<string, number>> = {};
+
+    // Determine payments between members
+    for (const payee of houseMembers) {
+      paymentInstructions[payee.username] = {};
+      for (const payer of houseMembers) {
+        if (payee.username !== payer.username) {
+          const amount =
+            paymentsCopy[payee.username] > 0
+              ? Math.min(
+                  paymentsCopy[payee.username],
+                  -paymentsCopy[payer.username]
+                )
+              : 0;
+          paymentInstructions[payee.username][payer.username] = amount;
+          paymentsCopy[payee.username] -= amount;
+          paymentsCopy[payer.username] += amount;
+        }
+      }
+    }
+    // Prepare and send the response
+
+    const response = {
+      totalMonthlyCost,
+      equalShare,
+      userBalance: payments,
+      actualCostByUser,
+      paymentInstructions,
+    };
+
+    res.status(200).json(response);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
