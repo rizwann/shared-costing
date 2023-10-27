@@ -6,6 +6,7 @@ import express from "express";
 import mongoose from "mongoose";
 import authRoutes from "./routes/authRoutes";
 import expenseRoutes from "./routes/expenseRoutes";
+import forgerPWRoutes from "./routes/forgetPassword";
 import houseRoutes from "./routes/houseRoutes";
 import storeRoutes from "./routes/storeRoutes";
 import userRoutes from "./routes/userRoutes";
@@ -41,6 +42,7 @@ app.use("/api/houses", houseRoutes);
 app.use("/api/stores", storeRoutes);
 app.use("/api/expenses", expenseRoutes);
 app.use("/api/user", userRoutes);
+app.use("/api", forgerPWRoutes);
 
 //test get request
 

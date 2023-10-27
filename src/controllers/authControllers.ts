@@ -6,72 +6,6 @@ import { validationResult } from "express-validator";
 import jwt from "jsonwebtoken";
 import { User } from "../models/User";
 
-// export const registerUser = async (req: Request, res: Response) => {
-//   try {
-//     // Validate user input
-//     const errors = validationResult(req);
-//     if (!errors.isEmpty()) {
-//       return res.status(400).json({ errors: errors.array() });
-//     }
-
-//     const { username, email, password } = req.body;
-
-//     // Check if the user already exists
-//     let user = await User.findOne({ email });
-//     if (user) {
-//       return res.status(400).json({ message: "User already exists" });
-//     }
-
-//     // Hash the password
-//     const saltRounds = 10;
-//     const hashedPassword = await bcrypt.hash(password, saltRounds);
-
-//     // Create a new user
-//     user = new User({
-//       username,
-//       email,
-//       authentication: { password: hashedPassword },
-//     });
-//     await user.save();
-
-//     res.status(201).json({ message: "User registered successfully" });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ message: "Server error" });
-//   }
-// };
-
-// export const loginUser = async (req: Request, res: Response) => {
-//   try {
-//     const { email, password } = req.body;
-
-//     // Check if the user exists
-//     const user = await User.findOne({ email });
-//     if (!user) {
-//       return res.status(404).json({ message: "User not found" });
-//     }
-
-//     // Compare passwords
-//     const passwordMatch = await bcrypt.compare(
-//       password,
-//       user?.authentication?.password
-//     );
-//     if (!passwordMatch) {
-//       return res.status(403).json({ message: "Invalid credentials" });
-//     }
-//     const loggedInUser = {
-//       _id: user._id,
-//       username: user.username,
-//       email: user.email,
-//     };
-
-//     res.status(200).json({ message: "Login successful", user: loggedInUser });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ message: "Server error" });
-//   }
-// };
-
 export const regUser = async (req: Request, res: Response) => {
   const { username, email, password } = req.body;
 
@@ -125,8 +59,8 @@ export const login = async (req: Request, res: Response) => {
     }
 
     const user = await User.findOne({
-      $or: [{ email }, { username }],
-    });
+      $or: [{ email: email }, { username: username }],
+    }).collation({ locale: "en", strength: 2 }); // 'en' is for English language, strength 2 for case-insensitive
 
     if (!user) {
       return res.status(400).json({ message: "User not found" });
@@ -144,39 +78,110 @@ export const login = async (req: Request, res: Response) => {
 
     res.cookie("USER_TOKEN", token);
 
-    return res.status(200).json({ token, user });
+    return res.status(200).json({
+      token,
+      user: {
+        email: user.email,
+        username: user.username,
+        houseCodes: user.houseCodes,
+      },
+    });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-// export const authCheck = async (req: Request, res: Response) => {
-//   const { email } = req.body;
-//   const sessionToken = req.cookies["USER_AUTH"];
+export const forgetPassword = async (req: Request, res: Response) => {
+  const { email } = req.body;
+  try {
+    const oldUser = await User.findOne({ email });
+    if (!oldUser) {
+      return res.json({ status: "User does not exist!!" });
+    }
+    const secret = "your-secret-key" + oldUser.password;
+    const token = jwt.sign({ email: oldUser.email, id: oldUser._id }, secret, {
+      expiresIn: "5m",
+    });
+    const link = `http://localhost:3000/api/reset-password/${oldUser._id}/${token}`;
+    // var transporter = nodemailer.createTransport({
+    //   service: "gmail",
+    //   auth: {
+    //     user: "adarsh438tcsckandivali@gmail.com",
+    //     pass: "rmdklolcsmswvyfw",
+    //   },
+    // });
 
-//   if (!sessionToken) {
-//     return res
-//       .status(400)
-//       .json({ isAuthenticated: false, message: "No session token" });
-//   }
-//   // find the user with this session token and email
-//   const user = await User.findOne({
-//     "authentication.sessionToken": sessionToken,
-//     email: email,
-//   });
+    // var mailOptions = {
+    //   from: "youremail@gmail.com",
+    //   to: oldUser.email,
+    //   subject: "Password Reset Link from Expense Tracker",
+    //   text: link,
+    // };
 
-//   if (!user) {
-//     return res.status(400).json({
-//       isAuthenticated: false,
-//       message: "Invalid session token, Login again",
-//     });
-//   }
-//   user.authentication.sessionToken = sessionToken;
+    // transporter.sendMail(mailOptions, function (error, info) {
+    //   if (error) {
+    //     console.log(error);
+    //   } else {
+    //     console.log("Email sent: " + info.response);
+    //   }
+    // });
+    console.log(link);
+    res.json({ status: "Password Reset Link Sent to your email id", link });
+  } catch (error) {
+    console.log(error);
+  }
+};
 
-//   return res.status(200).json({
-//     isAuthenticated: true,
-//     message: "User authenticated",
-//     user,
-//   });
-// };
+export const resetPassword = async (req: Request, res: Response) => {
+  const { id, token } = req.params;
+  console.log(req.params);
+  const oldUser = await User.findById(id);
+  if (!oldUser) {
+    return res.json({ status: "User Not Exists!!" });
+  }
+  const secret = "your-secret-key" + oldUser.password;
+  try {
+    const verify = jwt.verify(token, secret);
+    if (!verify) {
+      return res.json({ status: "Token not matched" });
+    }
+    res.json({ verify, status: "Verified" });
+  } catch (error) {
+    console.log(error);
+    res.send("Not Verified");
+  }
+};
+
+export const resetPWPost = async (req: Request, res: Response) => {
+  const { id, token } = req.params;
+  const { password } = req.body;
+
+  const oldUser = await User.findOne({ _id: id });
+  if (!oldUser) {
+    return res.json({ status: "User Not Exists!!" });
+  }
+  const secret = "your-secret-key" + oldUser.password;
+  try {
+    const verify = jwt.verify(token, secret);
+    if (!verify) {
+      return res.json({ status: "Token not matched" });
+    }
+    const encryptedPassword = await bcrypt.hash(password, 10);
+    await User.updateOne(
+      {
+        _id: id,
+      },
+      {
+        $set: {
+          password: encryptedPassword,
+        },
+      }
+    );
+
+    res.json({ status: "password updated successfully" });
+  } catch (error) {
+    console.log(error);
+    res.json({ status: "Something Went Wrong" });
+  }
+};
