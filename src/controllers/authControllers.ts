@@ -4,6 +4,7 @@ import bcrypt from "bcrypt";
 import { Request, Response } from "express";
 import { validationResult } from "express-validator";
 import jwt from "jsonwebtoken";
+import nodemailer from "nodemailer";
 import { User } from "../models/User";
 
 export const regUser = async (req: Request, res: Response) => {
@@ -97,36 +98,71 @@ export const forgetPassword = async (req: Request, res: Response) => {
   try {
     const oldUser = await User.findOne({ email });
     if (!oldUser) {
-      return res.json({ status: "User does not exist!!" });
+      return res.status(404).json({ message: "User email does not exist!!" });
     }
     const secret = "your-secret-key" + oldUser.password;
     const token = jwt.sign({ email: oldUser.email, id: oldUser._id }, secret, {
       expiresIn: "5m",
     });
-    const link = `http://localhost:3000/api/reset-password/${oldUser._id}/${token}`;
-    // var transporter = nodemailer.createTransport({
-    //   service: "gmail",
-    //   auth: {
-    //     user: "adarsh438tcsckandivali@gmail.com",
-    //     pass: "rmdklolcsmswvyfw",
-    //   },
-    // });
+    const APP_URL = process.env.APP_URL as string;
+    const FE_URL = process.env.FRONTEND_URL as string;
 
-    // var mailOptions = {
-    //   from: "youremail@gmail.com",
-    //   to: oldUser.email,
-    //   subject: "Password Reset Link from Expense Tracker",
-    //   text: link,
-    // };
+    const link = `${APP_URL}/reset-password/${oldUser._id}/${token}`;
+    // const emailLink = `${FE_URL}/reset-password/${oldUser._id}/${token}`;
+    const emailLink = `${FE_URL}/reset-password/${oldUser._id}?token=${token}`;
 
-    // transporter.sendMail(mailOptions, function (error, info) {
-    //   if (error) {
-    //     console.log(error);
-    //   } else {
-    //     console.log("Email sent: " + info.response);
-    //   }
-    // });
-    console.log(link);
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.APP_EMAIL as string,
+        pass: process.env.APP_PASSWORD as string,
+      },
+    });
+
+    var mailOptions = {
+      from: {
+        name: "House Expense Manager",
+        address: process.env.APP_EMAIL as string,
+      },
+      to: oldUser.email,
+      subject: "Password Reset Link from Expense Tracker",
+      html: `
+
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              background-color: #f3f3f3;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container" style="background-color: #ffffff; border-radius: 5px; padding: 20px; margin: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
+            <img src="${process.env.LOGO_URL}" alt="House Ex Manager" class="logo" style="width: 100px; height: 100px;" />
+            <h2 style="color: #333;">Password Reset Request</h2>
+            <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Hello there,</p>
+            <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">You've requested to reset your account password. Click the button below to proceed:</p>
+            <a href="${emailLink}" class="button" style="display: inline-block; color: #ffffff; padding: 12px 20px; text-align: center; text-decoration: none; border-radius: 4px; margin-top: 20px; background-color: #7C3AED;">Reset Password</a>
+            <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">If you didn't make this request, you can safely ignore this email.</p>
+            <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Best regards,</p>
+            <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Your House Expensen Manager Team</p>
+          </div>
+        </body>
+      </html>
+
+     `,
+    };
+
+    transporter.sendMail(mailOptions, function (error, info) {
+      if (error) {
+        console.log(error);
+      } else {
+        console.log("Email sent: " + info.response);
+      }
+    });
+
     res.json({ status: "Password Reset Link Sent to your email id", link });
   } catch (error) {
     console.log(error);
@@ -135,21 +171,24 @@ export const forgetPassword = async (req: Request, res: Response) => {
 
 export const resetPassword = async (req: Request, res: Response) => {
   const { id, token } = req.params;
-  console.log(req.params);
   const oldUser = await User.findById(id);
   if (!oldUser) {
-    return res.json({ status: "User Not Exists!!" });
+    return res.status(404).json({ message: "User does not exist!!" });
   }
   const secret = "your-secret-key" + oldUser.password;
   try {
     const verify = jwt.verify(token, secret);
     if (!verify) {
-      return res.json({ status: "Token not matched" });
+      return res.status(401).json({ message: "Token not matched" });
     }
     res.json({ verify, status: "Verified" });
-  } catch (error) {
-    console.log(error);
-    res.send("Not Verified");
+  } catch (error: any) {
+    console.log(error.message);
+    res.status(500).json({
+      message: error.message
+        ? "Password Reset Link Expired or Invalid"
+        : "Something Went Wrong!",
+    });
   }
 };
 
@@ -159,7 +198,7 @@ export const resetPWPost = async (req: Request, res: Response) => {
 
   const oldUser = await User.findOne({ _id: id });
   if (!oldUser) {
-    return res.json({ status: "User Not Exists!!" });
+    return res.status(404).json({ message: "User does not exist!!" });
   }
   const secret = "your-secret-key" + oldUser.password;
   try {
@@ -180,6 +219,8 @@ export const resetPWPost = async (req: Request, res: Response) => {
     );
 
     res.json({ status: "password updated successfully" });
+
+    // redirect to login page
   } catch (error) {
     console.log(error);
     res.json({ status: "Something Went Wrong" });

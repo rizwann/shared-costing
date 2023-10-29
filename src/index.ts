@@ -42,7 +42,7 @@ app.use("/api/houses", houseRoutes);
 app.use("/api/stores", storeRoutes);
 app.use("/api/expenses", expenseRoutes);
 app.use("/api/user", userRoutes);
-app.use("/api", forgerPWRoutes);
+app.use("/", forgerPWRoutes);
 
 //test get request
 
