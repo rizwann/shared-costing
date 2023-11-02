@@ -1,7 +1,9 @@
 import mongoose, { Document, Schema } from "mongoose";
 
 export interface IExpense extends Document {
-  store: string;
+  storeName?: string;
+  storeImg?: string;
+  storeId: string;
   cost: number;
   category: string;
   description: string;
@@ -19,7 +21,13 @@ enum CategoryName {
 }
 
 const ExpenseSchema: Schema = new Schema({
-  store: {
+  storeName: {
+    type: String,
+  },
+  storeImg: {
+    type: String,
+  },
+  storeId: {
     type: Schema.Types.ObjectId,
     ref: "Store",
     required: true,

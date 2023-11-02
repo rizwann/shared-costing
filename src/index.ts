@@ -5,6 +5,7 @@ import cors from "cors";
 import express from "express";
 import mongoose from "mongoose";
 import authRoutes from "./routes/authRoutes";
+import chartRoutes from "./routes/chartRoutes";
 import expenseRoutes from "./routes/expenseRoutes";
 import forgerPWRoutes from "./routes/forgetPassword";
 import houseRoutes from "./routes/houseRoutes";
@@ -17,16 +18,19 @@ const app = express();
 require("dotenv").config();
 
 var corsOptions = {
-  origin: "http://localhost:5173",
+  // multiple domains
+  origin: ["http://localhost:5173", "http://192.168.2.161:5173"],
   credentials: true,
   optionsSuccessStatus: 200, // some legacy browsers (IE11, various SmartTVs) choke on 204
+  //Access-Control-Allow-Origin
 };
 
 // Middleware
+app.use(cookieParser());
+
 app.use(cors(corsOptions));
 app.use("/uploads", express.static("uploads"));
 app.use(compression());
-app.use(cookieParser());
 app.use(bodyParser.json()); // Parse JSON requests
 const port = 3000;
 const mongoURI = process.env.MONGODB_URI as string;
@@ -36,13 +40,28 @@ mongoose.connect(mongoURI);
 
 const db = mongoose.connection;
 
+// app.use(function (req, res, next) {
+//   res.header("Access-Control-Allow-Credentials", "true");
+//   res.header("Access-Control-Allow-Origin", req.headers.origin);
+//   res.header("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE");
+//   res.header(
+//     "Access-Control-Allow-Headers",
+//     "X-Requested-With, X-HTTP-Method-Override, Content-Type, Accept"
+//   );
+//   next();
+// });
+
 // Use the authentication and house routes
 app.use("/api/auth", authRoutes);
 app.use("/api/houses", houseRoutes);
 app.use("/api/stores", storeRoutes);
 app.use("/api/expenses", expenseRoutes);
 app.use("/api/user", userRoutes);
+app.use("/api/chart", chartRoutes);
 app.use("/", forgerPWRoutes);
+app.get("/", (req, res) => {
+  res.send("Hello World!");
+});
 
 //test get request
 

@@ -1,7 +1,7 @@
 // authRoutes.ts
 import express from "express";
 import { check } from "express-validator";
-import { login, regUser } from "../controllers/authControllers"; // Import controller functions
+import { activateUser, login, regUser } from "../controllers/authControllers"; // Import controller functions
 
 const router = express.Router();
 
@@ -27,5 +27,8 @@ router.post("/login", login);
 // Logout route
 
 // router.get("/logout", logout);
+
+//actuvate account route
+router.get("/activate/:id/:token", activateUser);
 
 export default router;

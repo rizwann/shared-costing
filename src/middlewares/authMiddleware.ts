@@ -11,8 +11,8 @@ export const authMiddleware = (
   res: Response,
   next: NextFunction
 ) => {
-  // const token = req.headers.authorization;
-  const token = req.cookies["USER_TOKEN"];
+  const token = req.headers.authorization?.split(" ")[1];
+  console.log(token);
   if (!token) {
     return res.status(401).json({ message: "Unauthorized, no token found" });
   }
@@ -97,7 +97,7 @@ export const checkHouseOwnership = async (
 ) => {
   try {
     const { houseCode } = req.params;
-
+    console.log(houseCode);
     const userId = req.body.userId;
 
     const userHouses = await User.findById(userId).select("houseCodes");
@@ -198,7 +198,35 @@ export const isHouseMember = async (
     res.status(500).json({ message: "Server error" });
   }
 };
+export const isHouser = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { code } = req.params;
+    const currentUserId = req.body.userId;
 
+    const house = await House.findOne({ code });
+
+    if (!house) {
+      return res.status(404).json({ message: "House not found" });
+    }
+
+    const houseMembers = house.users;
+
+    if (!houseMembers.includes(currentUserId)) {
+      return res
+        .status(403)
+        .json({ message: "Unauthorized, you are not a member of this house" });
+    }
+
+    next();
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 export const isAdmin = async (
   req: Request,
   res: Response,

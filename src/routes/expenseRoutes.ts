@@ -1,4 +1,5 @@
 import express from "express";
+
 import {
   calculateHouseExpensesAndDebts,
   createExpense,
@@ -8,6 +9,7 @@ import {
   getAllExpensesByUserInHouse,
   getExpenseById,
   getExpensesOfCurrentMonthByUserInHouse,
+  getExpensesOfCurrentWeekByUserInHouse,
   getExpensesOfCurrentYearByUserInHouse,
   getExpensesOfHouseByCurrentMonth,
   getExpensesOfSpecificHouseByYear,
@@ -63,6 +65,14 @@ router.get(
   "/user/:userId/:houseCode/currentMonth",
   checkExpensesOwnershipAndHouseOwnership,
   getExpensesOfCurrentMonthByUserInHouse
+);
+
+//get expense of current week by the user in a specific house
+
+router.get(
+  "/user/:userId/:houseCode/currentWeek",
+  checkExpensesOwnershipAndHouseOwnership,
+  getExpensesOfCurrentWeekByUserInHouse
 );
 
 // get expense of current year by the user in a specific house
@@ -122,4 +132,5 @@ router.get(
   checkHouseOwnership,
   calculateHouseExpensesAndDebts
 );
+
 export default router;

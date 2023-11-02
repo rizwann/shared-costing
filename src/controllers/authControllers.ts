@@ -40,12 +40,183 @@ export const regUser = async (req: Request, res: Response) => {
 
     await user.save();
 
+    // Send email
+    const APP_URL = process.env.APP_URL as string;
+    const FE_URL = process.env.FRONTEND_URL as string;
+
+    const secret = "your-secret-key" + email;
+    const token = jwt.sign({ email }, secret, {
+      expiresIn: "1y",
+    });
+    const link = `${APP_URL}/api/auth/activate/${user._id}/${token}`;
+    const emailLink = `${FE_URL}/activate/${user._id}?token=${token}`;
+
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.APP_EMAIL as string,
+        pass: process.env.APP_PASSWORD as string,
+      },
+    });
+
+    var mailOptions = {
+      from: {
+        name: "House Expense Manager",
+        address: process.env.APP_EMAIL as string,
+      },
+      to: email,
+      subject: "Welcome Aboard! House Expense Tracker Awaits You",
+      html: `
+
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              background-color: #f3f3f3;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container" style="background-color: #ffffff; border-radius: 5px; padding: 20px; margin: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.1;">
+            <img src="${process.env.LOGO_URL}" alt="House Ex Manager" class="logo" style="width: 100px; height: 100px;" />
+            <h2 style="color: #333;">Welcome to House Expense Manager</h2>
+            <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Hello ${username},</p>
+            <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">We're thrilled to have you as a member of House Expense Manager. With our platform, managing your house expenses has never been easier!</p>
+            <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Explore all the features we offer and start taking control of your expenses today:</p>
+            <ul class="text" style="color: #333; font-size: 16px; margin-top: 20px; padding-left: 20px;">
+              <li>Track your daily expenses effortlessly</li>
+              <li>Get monthly notification for shared costs</li>
+              <li>Analyze your spending with insightful reports</li>
+              <li>And much more!</li>
+            </ul>
+            <a href="${emailLink}" class="button" style="display: inline-block; color: #ffffff; padding: 12px 20px; text-align: center; text-decoration: none; border-radius: 4px; margin-top: 20px; background-color: #7C3AED;">Activate your account</a>
+            <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">If you have any questions or need assistance, our support team is here to help. Feel free to reach out to us at houseexpensemanager@gmail.com.</p>
+            <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Once again, welcome to House Expense Manager. We're excited to have you on board!</p>
+            <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Best regards,</p>
+            <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Your House Expense Manager Team</p>
+          </div>
+        </body>
+      </html>
+      
+
+     `,
+    };
+
+    transporter.sendMail(mailOptions, function (error, info) {
+      if (error) {
+        console.log(error);
+      } else {
+        console.log("Email sent: " + info.response);
+      }
+    });
+
     return res
       .status(201)
-      .json({ message: "User registered successfully", user: user })
+      .json({
+        message: "User registered successfully",
+        user: {
+          email: user.email,
+          username: user.username,
+          houseCodes: user.houseCodes,
+        },
+        activationLink: link,
+      })
       .end();
   } catch (error) {
     return res.status(500).json({ message: "Server error bc" });
+  }
+};
+
+export const activateUser = async (req: Request, res: Response) => {
+  const { id, token } = req.params;
+  try {
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res
+        .status(404)
+        .json({ message: "Invalid activation token provided" });
+    }
+    if (user.active) {
+      return res.status(200).json({ message: "Account already activated" });
+    }
+    const secret = "your-secret-key" + user.email;
+    const verify = jwt.verify(token, secret);
+    if (!verify) {
+      return res.status(401).json({ message: "Token not matched" });
+    }
+    // Update the user's 'active' property to true
+    user.active = true;
+    await user.save();
+
+    // Send email
+
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.APP_EMAIL as string,
+        pass: process.env.APP_PASSWORD as string,
+      },
+    });
+    const username = user.username.toLocaleUpperCase();
+
+    const mailOptions = {
+      from: {
+        name: "House Expense Manager",
+        address: process.env.APP_EMAIL as string,
+      },
+      to: user.email,
+      subject: "Account Activated: Welcome to House Expense Manager!",
+      html: `
+
+   <!DOCTYPE html>
+   <html>
+     <head>
+       <style>
+         body {
+           font-family: Arial, sans-serif;
+           background-color: #f3f3f3;
+         }
+       </style>
+     </head>
+     <body>
+       <div class="container" style="background-color: #ffffff; border-radius: 5px; padding: 20px; margin: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
+         <img src="${process.env.LOGO_URL}" alt="House Ex Manager" class="logo" style="width: 100px; height: 100px;" />
+         <h2 style="color: #333;">Account Activation</h2>
+         <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Hello ${username},</p>
+         <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Your House Expense Manager account has been successfully activated!</p>
+         <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">You can now log in and start managing your expenses with ease.</p>
+         <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">If you have any questions or need assistance, our support team is here to help. Feel free to reach out to us at support@houseexpensemgr.com.</p>
+         <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Thank you for choosing House Expense Manager. We look forward to assisting you in managing your expenses.</p>
+         <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Best regards,</p>
+         <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Your House Expense Manager Team</p>
+       </div>
+     </body>
+   </html>
+   
+   
+
+  `,
+    };
+
+    transporter.sendMail(mailOptions, function (error, info) {
+      if (error) {
+        console.log(error);
+      } else {
+        console.log("Email sent: " + info.response);
+      }
+    });
+
+    return res.status(200).json({ message: "Account activated successfully" });
+  } catch (error: any) {
+    console.log(error.message);
+    res.status(500).json({
+      message: error.message
+        ? "Activation Link is Expired or Invalid"
+        : "Something Went Wrong!",
+    });
   }
 };
 
@@ -77,11 +248,15 @@ export const login = async (req: Request, res: Response) => {
       expiresIn: "1y",
     });
 
-    res.cookie("USER_TOKEN", token);
+    res.cookie("USER_TOKEN", token, {
+      maxAge: 1000 * 60 * 60 * 24 * 365, // 1 year
+      domain: process.env.FRONTEND_URL,
+    });
 
     return res.status(200).json({
       token,
       user: {
+        _id: user._id,
         email: user.email,
         username: user.username,
         houseCodes: user.houseCodes,
@@ -147,7 +322,7 @@ export const forgetPassword = async (req: Request, res: Response) => {
             <a href="${emailLink}" class="button" style="display: inline-block; color: #ffffff; padding: 12px 20px; text-align: center; text-decoration: none; border-radius: 4px; margin-top: 20px; background-color: #7C3AED;">Reset Password</a>
             <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">If you didn't make this request, you can safely ignore this email.</p>
             <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Best regards,</p>
-            <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Your House Expensen Manager Team</p>
+            <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Your House Expense Manager Team</p>
           </div>
         </body>
       </html>

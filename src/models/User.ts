@@ -4,6 +4,7 @@ export interface IUser {
   email: string;
   username: string;
   password: string;
+  active?: boolean;
   houseCodes: string[]; // Array of house codes the user belongs to
 }
 
@@ -13,6 +14,7 @@ const UserSchema: Schema = new Schema({
   email: { type: String, required: true, unique: true },
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
+  active: { type: Boolean, default: false },
   houseCodes: {
     type: [String], // Array of house codes
     default: [],

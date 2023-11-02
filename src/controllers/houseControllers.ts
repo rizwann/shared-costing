@@ -40,6 +40,23 @@ export const createHouse = async (req: Request, res: Response) => {
   }
 };
 
+export const getSingleHouse = async (req: Request, res: Response) => {
+  try {
+    const { code } = req.params;
+
+    const house = await House.findOne({ code });
+
+    if (!house) {
+      return res.status(404).json({ message: "House not found" });
+    }
+
+    res.status(200).json(house);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 export const getHousesByUserId = async (req: Request, res: Response) => {
   try {
     const currentUserId = req.body.userId;
@@ -51,6 +68,29 @@ export const getHousesByUserId = async (req: Request, res: Response) => {
     }
 
     res.status(200).json(houses);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const getUserByHouseCode = async (req: Request, res: Response) => {
+  try {
+    const { code } = req.params;
+
+    const house = await House.findOne({ code });
+
+    if (!house) {
+      return res.status(404).json({ message: "House not found" });
+    }
+
+    const users = await User.find({ houseCodes: house.code });
+
+    if (!users) {
+      return res.status(404).json({ message: "Users not found" });
+    }
+
+    res.status(200).json(users);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });

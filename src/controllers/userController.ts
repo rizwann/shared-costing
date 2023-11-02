@@ -18,7 +18,19 @@ export const getUserById = async (req: Request, res: Response) => {
     const { userId } = req.params;
     const user = await User.findById(userId);
 
-    return res.status(200).json({ user });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.status(200).json({
+      user: {
+        _id: user._id,
+        email: user.email,
+        username: user.username,
+        houseCodes: user.houseCodes,
+        active: user.active,
+      },
+    });
   } catch (error) {
     return res.status(500).json({ message: "Server error" });
   }
@@ -68,13 +80,11 @@ export const updateUsernameEmail = async (req: Request, res: Response) => {
     }
 
     await user.save();
-    return res
-      .status(200)
-      .json({
-        message: "user updated successfully",
-        username: user.username,
-        email: user.email,
-      });
+    return res.status(200).json({
+      message: "user updated successfully",
+      username: user.username,
+      email: user.email,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });

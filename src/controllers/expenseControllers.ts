@@ -1,11 +1,13 @@
 import { Request, Response } from "express";
 import Expense from "../models/Expense";
+import Store from "../models/Store";
 import { User } from "../models/User";
 
 // Create a new expense
 export const createExpense = async (req: Request, res: Response) => {
   try {
-    const { store, cost, category, description, houseCode, userId } = req.body;
+    const { storeId, cost, category, description, houseCode, userId } =
+      req.body;
 
     const userHouses = await User.findById(userId).select("houseCodes");
 
@@ -14,16 +16,24 @@ export const createExpense = async (req: Request, res: Response) => {
         .status(403)
         .json({ message: "Unauthorized, you are not a member of this house!" });
     }
+
+    const foundStore = await Store.findById(storeId);
+    if (!foundStore) {
+      return res.status(404).json({ message: "Store not found" });
+    }
+
     const date = new Date();
 
     const newExpense = new Expense({
       user: userId,
-      store,
+      storeId,
       cost,
       category,
       description,
       houseCode,
       date,
+      storeName: foundStore.name ? foundStore.name : "",
+      storeImg: foundStore.image ? foundStore.image : "",
     });
     const savedExpense = await newExpense.save();
 
@@ -156,7 +166,11 @@ export const getAllExpensesByUserInHouse = async (
   try {
     const { userId, houseCode } = req.params;
 
-    const expenses = await Expense.find({ user: userId, houseCode: houseCode });
+    const { last } = req.query;
+
+    const expenses = await Expense.find({ user: userId, houseCode })
+      .sort({ date: -1 })
+      .limit(last ? Number(last) : 0);
 
     if (!expenses) {
       return res.status(404).json({ message: "Expenses not found" });
@@ -168,7 +182,7 @@ export const getAllExpensesByUserInHouse = async (
         .json({ message: "No expenses found for this user" });
     }
 
-    res.status(200).json(expenses);
+    res.status(200).json({ count: expenses.length, expenses });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });
@@ -221,16 +235,55 @@ export const getExpensesOfCurrentMonthByUserInHouse = async (
     const date = new Date();
     const currentMonth = date.getMonth();
     const currentYear = date.getFullYear();
-    // check which expenses has date property
-    // Todo: remove this after adding date property to all expenses
-    const expensesWithDateProp = expenses.filter((expense) => expense.date);
-    const expensesOfCurrentMonth = expensesWithDateProp.filter(
+    const expensesOfCurrentMonth = expenses.filter(
       (expense) =>
         expense.date.getMonth() === currentMonth &&
         expense.date.getFullYear() === currentYear
     );
 
     res.status(200).json(expensesOfCurrentMonth);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+//get expense of current week by the user in a specific house
+export const getExpensesOfCurrentWeekByUserInHouse = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const { userId, houseCode } = req.params;
+    const expenses = await Expense.find({ user: userId, houseCode: houseCode });
+
+    if (!expenses) {
+      return res.status(404).json({ message: "Expenses not found" });
+    }
+
+    if (expenses.length === 0) {
+      return res
+        .status(200)
+        .json({ message: "No expenses found for this user" });
+    }
+
+    const currentDate = new Date();
+    const currentWeekStartDate = new Date(currentDate);
+    currentWeekStartDate.setHours(0, 0, 0, 0);
+    currentWeekStartDate.setDate(
+      currentWeekStartDate.getDate() - currentDate.getDay()
+    ); // Set to the start of the week (Sunday).
+
+    const currentWeekEndDate = new Date(currentWeekStartDate);
+    currentWeekEndDate.setDate(currentWeekEndDate.getDate() + 7); // End of the week (next Sunday).
+
+    const expensesOfCurrentWeek = expenses.filter(
+      (expense) =>
+        expense.date >= currentWeekStartDate &&
+        expense.date < currentWeekEndDate
+    );
+
+    res.status(200).json(expensesOfCurrentWeek);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });

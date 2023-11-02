@@ -5,6 +5,8 @@ import {
   deleteHouse,
   getAllHouses,
   getHousesByUserId,
+  getSingleHouse,
+  getUserByHouseCode,
   joinHouse,
   leaveHouse,
   updateHouse,
@@ -13,6 +15,7 @@ import {
   authMiddleware,
   isAdmin,
   isHouseMember,
+  isHouser,
 } from "../middlewares/authMiddleware";
 
 const router = express.Router();
@@ -43,6 +46,12 @@ router.post(
 router.get("/all", isAdmin, getAllHouses);
 // Get a house by ID
 router.get("/", getHousesByUserId);
+
+// Get all users of a house
+
+router.get("/users/:code", isHouser, getUserByHouseCode);
+
+router.get("/:code", getSingleHouse);
 
 // Update a house by ID
 router.put(
