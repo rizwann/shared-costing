@@ -23,6 +23,8 @@ export const createExpense = async (req: Request, res: Response) => {
     }
 
     const date = new Date();
+    //Germany time zone
+    date.setHours(date.getHours() + 1);
 
     const newExpense = new Expense({
       user: userId,
@@ -190,27 +192,6 @@ export const getAllExpensesByUserInHouse = async (
 };
 
 //get all expenses by house
-export const getAllExpensesByHouse = async (req: Request, res: Response) => {
-  try {
-    const { houseCode } = req.params;
-    const expenses = await Expense.find({ houseCode: houseCode });
-
-    if (!expenses) {
-      return res.status(404).json({ message: "Expenses not found" });
-    }
-
-    if (expenses.length === 0) {
-      return res
-        .status(200)
-        .json({ message: "No expenses found for this user" });
-    }
-
-    res.status(200).json(expenses);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
-  }
-};
 
 //get expense of current month by the user in a specific house
 
@@ -291,38 +272,70 @@ export const getExpensesOfCurrentWeekByUserInHouse = async (
 };
 
 // get expense of current month by house
-export const getExpensesOfHouseByCurrentMonth = async (
-  req: Request,
-  res: Response
-) => {
+export const getExpensesOfHouse = async (req: Request, res: Response) => {
   try {
     const { houseCode } = req.params;
+    const { currentMonth, lastMonth } = req.query;
 
     const expenses = await Expense.find({ houseCode: houseCode });
 
-    if (!expenses) {
-      return res.status(404).json({ message: "Expenses not found" });
-    }
-
     if (expenses.length === 0) {
       return res
-        .status(200)
+        .status(404)
         .json({ message: "No expenses found for this user" });
     }
 
+    const totalExpenses = Number(
+      expenses.reduce((total, expense) => total + expense.cost, 0).toFixed(2)
+    );
+
     const date = new Date();
-    const currentMonth = date.getMonth();
+    const thisMonth = date.getMonth();
     const currentYear = date.getFullYear();
-    // check which expenses has date property
-    // Todo: remove this after adding date property to all expenses
-    const expensesWithDateProp = expenses.filter((expense) => expense.date);
-    const expensesOfCurrentMonth = expensesWithDateProp.filter(
+    let prevMonth = date.getMonth() - 1;
+    let prevYear = date.getFullYear();
+    if (prevMonth < 0) {
+      prevYear -= 1;
+      prevMonth = 11; // December
+    }
+
+    const expensesOfthisMonth = expenses.filter(
       (expense) =>
-        expense.date.getMonth() === currentMonth &&
+        expense.date.getMonth() === thisMonth &&
         expense.date.getFullYear() === currentYear
     );
 
-    res.status(200).json(expensesOfCurrentMonth);
+    const totalExpensesThisMonth = Number(
+      expensesOfthisMonth
+        .reduce((total, expense) => total + expense.cost, 0)
+        .toFixed(2)
+    );
+
+    const expensesOfLastMonth = expenses.filter(
+      (expense) =>
+        expense.date.getMonth() === prevMonth &&
+        expense.date.getFullYear() === prevYear
+    );
+
+    const totalExpensesLastMonth = Number(
+      expensesOfLastMonth
+        .reduce((total, expense) => total + expense.cost, 0)
+        .toFixed(2)
+    );
+
+    res.status(200).json(
+      currentMonth === "true"
+        ? {
+            totalExpenses: totalExpensesThisMonth,
+            expenses: expensesOfthisMonth,
+          }
+        : lastMonth === "true"
+        ? {
+            totalExpenses: totalExpensesLastMonth,
+            expenses: expensesOfLastMonth,
+          }
+        : { totalExpenses, expenses }
+    );
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });

@@ -4,14 +4,13 @@ import {
   calculateHouseExpensesAndDebts,
   createExpense,
   deleteExpense,
-  getAllExpensesByHouse,
   getAllExpensesByUser,
   getAllExpensesByUserInHouse,
   getExpenseById,
   getExpensesOfCurrentMonthByUserInHouse,
   getExpensesOfCurrentWeekByUserInHouse,
   getExpensesOfCurrentYearByUserInHouse,
-  getExpensesOfHouseByCurrentMonth,
+  getExpensesOfHouse,
   getExpensesOfSpecificHouseByYear,
   getExpensesOfSpecificMonthAndYearByHouse,
   getExpensesOfSpecificMonthAndYearByUserInHouse,
@@ -56,9 +55,6 @@ router.get(
   getAllExpensesByUserInHouse
 );
 
-// Get all expenses by house code
-router.get("/house/:houseCode/all", checkHouseOwnership, getAllExpensesByHouse);
-
 //get expense of current month by the user in a specific house
 
 router.get(
@@ -98,13 +94,9 @@ router.get(
   getExpensesOfSpecificMonthAndYearByUserInHouse
 );
 
-// get all expenses of current month in a specific house
+// get all expenses of current month/all/lastMonth in a specific house
 
-router.get(
-  "/house/:houseCode/currentMonth",
-  checkHouseOwnership,
-  getExpensesOfHouseByCurrentMonth
-);
+router.get("/house/:houseCode", checkHouseOwnership, getExpensesOfHouse);
 
 // get expense of a specific year in a specific house
 

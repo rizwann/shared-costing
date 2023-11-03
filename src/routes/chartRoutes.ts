@@ -1,6 +1,8 @@
 import express from "express";
 
 import {
+  getCurrentMonthExpenseComparison,
+  getCurrentMonthExpensesByHouseMembers,
   getHouseExpensesByStores,
   getLast6MonthsExpensesByHouse,
   getUserWeeklyTotal,
@@ -26,6 +28,17 @@ router.get(
   "/user/expenses/half-yearly/:houseCode",
   checkHouseOwnership,
   getLast6MonthsExpensesByHouse
+);
+
+router.get(
+  "/house/expenses/contributions/:houseCode",
+  checkHouseOwnership,
+  getCurrentMonthExpensesByHouseMembers
+);
+router.get(
+  "/user/expenses/comparison/:houseCode",
+  checkHouseOwnership,
+  getCurrentMonthExpenseComparison
 );
 
 export default router;
