@@ -67,7 +67,15 @@ export const getHousesByUserId = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Houses not found" });
     }
 
-    res.status(200).json(houses);
+    const housesWithUserNames = await Promise.all(
+      houses.map(async (house) => {
+        const users = await User.find({ houseCodes: house.code });
+        const userNames = users.map((user) => user.username);
+        return { ...house.toObject(), users: userNames };
+      })
+    );
+
+    res.status(200).json({ houses, housesWithUserNames });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });

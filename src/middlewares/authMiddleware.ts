@@ -237,7 +237,8 @@ export const isAdmin = async (
 
     const user = await User.findById(currentUserId);
 
-    const admin = user?.username === "Rizwan";
+    const admin =
+      user?.username === "Rizwan" || user?.username === "RizwanKabir";
 
     if (!admin) {
       return res

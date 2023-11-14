@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import Expense from "../models/Expense";
+import Expense, { CategoryName } from "../models/Expense";
 import { User } from "../models/User";
 
 // Get house expenses by store
@@ -190,7 +190,25 @@ export const getLast6MonthsExpensesByHouse = async (
       };
     });
 
-    res.status(200).json(finalResult);
+    const last6Months = finalResult.slice(
+      sixMonthsAgo.getMonth(),
+      today.getMonth() + 1
+    );
+
+    //find the percentage ... compare the last 5 months average with the current month
+    const currentMonthExpenses = last6Months[last6Months.length - 1].expenses;
+    const last5MonthsExpensesAvg =
+      last6Months
+        .slice(0, last6Months.length - 1)
+        .reduce((total, month) => total + Number(month.expenses), 0) / 5;
+
+    const percentage = Math.round(
+      ((currentMonthExpenses - last5MonthsExpensesAvg) /
+        last5MonthsExpensesAvg) *
+        100
+    );
+
+    res.status(200).json({ percentage, last6Months });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });
@@ -306,6 +324,224 @@ export const getCurrentMonthExpenseComparison = async (
       totalExpensesLastMonth,
       percentage,
     });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const getCurrentMonthExpensesByCategory = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const { houseCode } = req.params;
+    const { userId } = req.body;
+    const today = new Date();
+
+    const expenses = await Expense.find({ houseCode, user: userId })
+      .select("category cost")
+      .sort({ category: 1 })
+      .exec();
+
+    if (expenses.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No expenses found for this user" });
+    }
+
+    //group by category
+    const expensesByCategory = expenses.reduce((acc: any, curr: any) => {
+      if (acc[curr.category]) {
+        acc[curr.category] += curr.cost;
+      } else {
+        acc[curr.category] = curr.cost;
+      }
+      return acc;
+    }, {});
+
+    const result = Object.entries(expensesByCategory).map((entry: any) => ({
+      name: entry[0],
+      expenses: Number(entry[1].toFixed(2)),
+    }));
+
+    //find the highest expense category
+
+    let highestExpense = { name: "", expenses: 0 };
+
+    for (let i = 0; i < result.length; i++) {
+      if (Number(result[i].expenses) > Number(highestExpense.expenses)) {
+        highestExpense = result[i];
+      }
+    }
+    // percentage of the highest expense category from the total expenses
+    const totalExpenses = result.reduce(
+      (total: number, expense: any) => total + expense.expenses,
+      0
+    );
+
+    const percentage = Math.round(
+      (highestExpense.expenses / totalExpenses) * 100
+    );
+
+    res.status(200).json({ result, highestExpense, percentage });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const getCurrentMonthExpensesByStore = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const { houseCode } = req.params;
+    const { userId } = req.body;
+
+    const expenses = await Expense.find({ houseCode, user: userId })
+      .select("storeName cost")
+      .sort({ storeName: 1 })
+      .exec();
+
+    if (expenses.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No expenses found for this user" });
+    }
+
+    //group by store
+    const expensesByStore = expenses.reduce((acc: any, curr: any) => {
+      if (acc[curr.storeName]) {
+        acc[curr.storeName] += curr.cost;
+      } else {
+        acc[curr.storeName] = curr.cost;
+      }
+      return acc;
+    }, {});
+
+    const result = Object.entries(expensesByStore).map((entry: any) => ({
+      name: entry[0],
+      expenses: Number(entry[1].toFixed(2)),
+    }));
+
+    //find the highest expense store
+
+    let highestExpense = { name: "", expenses: 0 };
+
+    for (let i = 0; i < result.length; i++) {
+      if (Number(result[i].expenses) > Number(highestExpense.expenses)) {
+        highestExpense = result[i];
+      }
+    }
+    // percentage of the highest expense store from the total expenses
+    const totalExpenses = result.reduce(
+      (total: number, expense: any) => total + expense.expenses,
+      0
+    );
+
+    const percentage = Math.round(
+      (highestExpense.expenses / totalExpenses) * 100
+    );
+
+    res.status(200).json({ result, highestExpense, percentage });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const getLast6MonthsExpensesByCategory = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const { houseCode } = req.params;
+    const { userId } = req.body;
+    const today = new Date();
+    const sixMonthsAgo = new Date(today);
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+    sixMonthsAgo.setDate(1);
+    console.log(sixMonthsAgo);
+
+    const allExpenses = await Expense.find({ user: userId, houseCode })
+      .select("cost date category")
+      .sort({ date: 1 })
+      .gte("date", sixMonthsAgo)
+      .lte("date", today)
+      .exec();
+
+    if (!allExpenses.length) {
+      return res.status(404).json({ message: "No expenses found" });
+    }
+
+    const expenses = allExpenses
+      .map((entry: any) => ({
+        month: entry.date.getMonth(),
+        category: entry.category,
+        totalExpense: entry.cost,
+      }))
+      .reduce((acc: any, curr: any) => {
+        if (acc[curr.month]) {
+          if (acc[curr.month][curr.category]) {
+            acc[curr.month][curr.category] += curr.totalExpense;
+          } else {
+            acc[curr.month][curr.category] = curr.totalExpense;
+          }
+        } else {
+          acc[curr.month] = {};
+          acc[curr.month][curr.category] = curr.totalExpense;
+        }
+        return acc;
+      }, {});
+    const monthsOfTheYear = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+    ];
+
+    const result = Object.entries(expenses).map((entry: any) => ({
+      month: Number(entry[0]),
+      expenses: entry[1],
+    }));
+
+    const finalResult = monthsOfTheYear.map((month, idX) => {
+      const entry = result.find((exp) => exp.month === idX);
+      return {
+        name: month,
+        expenses: entry ? entry.expenses : {},
+      };
+    });
+
+    const last6Months = finalResult.slice(
+      sixMonthsAgo.getMonth(),
+      today.getMonth() + 1
+    );
+
+    const response = last6Months.map((month) => {
+      const monthName = month.name;
+      const expenses = month.expenses;
+      const categories = Object.values(CategoryName);
+      console.log(categories);
+      const expensesObj: any = {};
+      categories.forEach((category) => {
+        expensesObj[category] = 0;
+      });
+      return {
+        name: monthName,
+        ...expensesObj,
+        ...expenses,
+      };
+    });
+    res.status(200).json({ response });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });

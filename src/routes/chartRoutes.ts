@@ -2,8 +2,11 @@ import express from "express";
 
 import {
   getCurrentMonthExpenseComparison,
+  getCurrentMonthExpensesByCategory,
   getCurrentMonthExpensesByHouseMembers,
+  getCurrentMonthExpensesByStore,
   getHouseExpensesByStores,
+  getLast6MonthsExpensesByCategory,
   getLast6MonthsExpensesByHouse,
   getUserWeeklyTotal,
 } from "../controllers/chartDataController";
@@ -39,6 +42,24 @@ router.get(
   "/user/expenses/comparison/:houseCode",
   checkHouseOwnership,
   getCurrentMonthExpenseComparison
+);
+
+router.get(
+  "/expenses/category/:houseCode",
+  checkHouseOwnership,
+  getCurrentMonthExpensesByCategory
+);
+
+router.get(
+  "/expenses/store/:houseCode",
+  checkHouseOwnership,
+  getCurrentMonthExpensesByStore
+);
+
+router.get(
+  "/expenses/category/half-yearly/:houseCode",
+  checkHouseOwnership,
+  getLast6MonthsExpensesByCategory
 );
 
 export default router;

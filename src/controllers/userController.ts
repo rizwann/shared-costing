@@ -1,13 +1,20 @@
 import bcrypt from "bcrypt";
 
 import { Request, Response } from "express";
+import House from "../models/House";
 import { User } from "../models/User";
 
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
     const users = await User.find();
-
-    return res.status(200).json({ users });
+    const usersWithHouseNames = await Promise.all(
+      users.map(async (user) => {
+        const houses = await House.find({ code: { $in: user.houseCodes } });
+        const houseNames = houses.map((house) => house.description);
+        return { ...user.toObject(), houseNames };
+      })
+    );
+    return res.status(200).json({ usersWithHouseNames });
   } catch (error) {
     return res.status(500).json({ message: "Server error" });
   }

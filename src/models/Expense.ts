@@ -11,7 +11,7 @@ export interface IExpense extends Document {
   houseCode: string; // House id to which the expense is assigned
   date: Date;
 }
-enum CategoryName {
+export enum CategoryName {
   Other = "Other",
   Grocery = "Grocery",
   Restaurant = "Restaurant",
