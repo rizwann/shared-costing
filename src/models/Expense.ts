@@ -9,6 +9,8 @@ export interface IExpense extends Document {
   description: string;
   user: string; // User id who added the expense
   houseCode: string; // House id to which the expense is assigned
+  //involved Users
+  involvedUsers: string[];
   date: Date;
 }
 export enum CategoryName {
@@ -55,6 +57,12 @@ const ExpenseSchema: Schema = new Schema({
     type: String, //
     required: true,
   },
+  involvedUsers: [
+    {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+    },
+  ],
   date: {
     type: Date,
     required: true,

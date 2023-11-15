@@ -238,7 +238,8 @@ export const isAdmin = async (
     const user = await User.findById(currentUserId);
 
     const admin =
-      user?.username === "Rizwan" || user?.username === "RizwanKabir";
+      user?.username.toLocaleLowerCase() === "Rizwan".toLocaleLowerCase() ||
+      user?.username === "RizwanKabir".toLocaleLowerCase();
 
     if (!admin) {
       return res
