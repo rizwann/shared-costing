@@ -49,8 +49,7 @@ const ExpenseSchema: Schema = new Schema({
     required: true,
   },
   user: {
-    type: Schema.Types.ObjectId, // User id who added the expense
-    ref: "User", // Reference to the User model
+    type: String,
     required: true,
   },
   houseCode: {
@@ -59,8 +58,8 @@ const ExpenseSchema: Schema = new Schema({
   },
   involvedUsers: [
     {
-      type: Schema.Types.ObjectId,
-      ref: "User",
+      type: String,
+      required: true,
     },
   ],
   date: {

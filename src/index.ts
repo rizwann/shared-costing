@@ -22,7 +22,6 @@ var corsOptions = {
   origin: ["http://localhost:5173", "http://192.168.2.161:5173"],
   credentials: true,
   optionsSuccessStatus: 200, // some legacy browsers (IE11, various SmartTVs) choke on 204
-  //Access-Control-Allow-Origin
 };
 
 // Middleware
@@ -40,16 +39,16 @@ mongoose.connect(mongoURI);
 
 const db = mongoose.connection;
 
-// app.use(function (req, res, next) {
-//   res.header("Access-Control-Allow-Credentials", "true");
-//   res.header("Access-Control-Allow-Origin", req.headers.origin);
-//   res.header("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE");
-//   res.header(
-//     "Access-Control-Allow-Headers",
-//     "X-Requested-With, X-HTTP-Method-Override, Content-Type, Accept"
-//   );
-//   next();
-// });
+app.use(function (req, res, next) {
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.header("Access-Control-Allow-Origin", req.headers.origin);
+  res.header("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "X-Requested-With, X-HTTP-Method-Override, Content-Type, Accept"
+  );
+  next();
+});
 
 // Use the authentication and house routes
 app.use("/api/auth", authRoutes);

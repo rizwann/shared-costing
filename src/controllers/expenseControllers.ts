@@ -17,6 +17,10 @@ export const createExpense = async (req: Request, res: Response) => {
     } = req.body;
 
     const userHouses = await User.findById(userId).select("houseCodes");
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
     if (!userHouses?.houseCodes.includes(houseCode)) {
       return res
@@ -31,14 +35,14 @@ export const createExpense = async (req: Request, res: Response) => {
 
     // check if the involved users are members of the house
     const users = await User.find({ houseCodes: houseCode });
-    const usersIds = users.map((user) => user._id.toString());
+    const usernames = users.map((user) => user.username);
 
-    const involvedUsersIds = involvedUsers
-      ? [...involvedUsers, userId]
-      : usersIds;
+    const involvedUsersNames = involvedUsers
+      ? [...involvedUsers, user.username]
+      : usernames;
 
-    const isInvolvedUsersInHouse = involvedUsersIds?.every((id: string) =>
-      usersIds.includes(id.toString())
+    const isInvolvedUsersInHouse = involvedUsersNames.every((user) =>
+      usernames.includes(user)
     );
     if (!isInvolvedUsersInHouse) {
       return res
@@ -50,7 +54,7 @@ export const createExpense = async (req: Request, res: Response) => {
     date.setHours(date.getHours() + 1);
 
     const newExpense = new Expense({
-      user: userId,
+      user: user.username,
       storeId,
       cost,
       category,
@@ -59,7 +63,7 @@ export const createExpense = async (req: Request, res: Response) => {
       date,
       storeName: foundStore.name ? foundStore.name : "",
       storeImg: foundStore.image ? foundStore.image : "",
-      involvedUsers: involvedUsersIds,
+      involvedUsers: involvedUsersNames,
     });
     const savedExpense = await newExpense.save();
 
@@ -572,220 +576,121 @@ export const calculateHouseExpensesAndDebts = async (
               expense.date.getFullYear() === currentYear
           );
 
-    // Find all users in the house
-    const houseMembers = await User.find({ houseCodes: houseCode });
+    const calculateNetChange = (
+      expenses: typeof allExpenses,
+      person: string
+    ): number => {
+      let cashInflow = 0;
+      let cashOutflow = 0;
 
-    if (!expenses || !houseMembers) {
-      return res
-        .status(404)
-        .json({ message: "Data not found for the given house" });
-    }
-
-    // Calculate the total monthly cost
-    let totalMonthlyCost = expenses.reduce(
-      (total, expense) => total + expense.cost,
-      0
-    );
-    totalMonthlyCost = Number(totalMonthlyCost.toFixed(2));
-
-    // Calculate the share per member
-    let equalShare = totalMonthlyCost / houseMembers.length;
-
-    equalShare = Number(equalShare.toFixed(2));
-
-    const payments = {} as Record<string, number>;
-
-    // Calculate the actual expenses by each user
-    const actualCostByUser: { [username: string]: number } = {};
-    // Calculate user's expenses for the month by iterating over house members and matching the user id with the expense user id
-    houseMembers.forEach((user) => {
-      const userExpenses = expenses.filter(
-        (expense) => expense.user.toString() === user._id.toString()
-      );
-      let userTotalExpense = 0;
-      userExpenses.forEach((expense) => {
-        userTotalExpense += expense.cost;
-      });
-      actualCostByUser[user.username] = userTotalExpense;
-    });
-
-    // Calculate payments
-    for (const member of houseMembers) {
-      let balance = equalShare - actualCostByUser[member.username];
-      payments[member.username] = Number(balance.toFixed(2));
-    }
-
-    // Initialize an object to store payment instructions
-    const paymentsCopy = { ...payments };
-
-    // Initialize an object to store payment instructions
-
-    const paymentInstructions: Record<string, Record<string, number>> = {};
-
-    // Determine payments between members
-    for (const payee of houseMembers) {
-      paymentInstructions[payee.username] = {};
-      for (const payer of houseMembers) {
-        if (payee.username !== payer.username) {
-          const amount =
-            paymentsCopy[payee.username] > 0
-              ? Math.min(
-                  paymentsCopy[payee.username],
-                  -paymentsCopy[payer.username]
-                )
-              : 0;
-          paymentInstructions[payee.username][payer.username] = amount;
-          paymentsCopy[payee.username] -= amount;
-          paymentsCopy[payer.username] += amount;
+      expenses.forEach((expense) => {
+        if (expense.user === person) {
+          const average = expense.cost / expense.involvedUsers.length;
+          cashOutflow += expense.cost - average;
+        } else if (expense.involvedUsers.includes(person)) {
+          cashInflow += expense.cost / expense.involvedUsers.length;
         }
-      }
-    }
+      });
 
-    // Prepare and send the response
-
-    const response = {
-      totalMonthlyCost,
-      equalShare,
-      userBalance: payments,
-      actualCostByUser,
-      paymentInstructions,
+      return Number((cashInflow - cashOutflow).toFixed(2));
     };
 
-    res.status(200).json(response);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
-  }
-};
+    const calculateNetChangeForAll = (
+      expenses: typeof allExpenses
+    ): Record<string, number> => {
+      const persons: string[] = Array.from(
+        new Set(
+          expenses.reduce<string[]>((acc, expense) => {
+            acc.push(expense.user, ...expense.involvedUsers);
+            return acc;
+          }, [])
+        )
+      );
+      const netChanges: Record<string, number> = {};
 
-export const calculateHouseExpensesAndDebtsNew = async (
-  req: Request,
-  res: Response
-) => {
-  try {
-    const { houseCode, month, year } = req.params;
+      persons.forEach((person) => {
+        const netChange = calculateNetChange(expenses, person);
+        netChanges[person] = netChange;
+      });
 
-    // Find all expenses for the given house
-    const allExpenses = await Expense.find({ houseCode });
-    const date = new Date();
-    const currentMonth = date.getMonth();
-    const currentYear = date.getFullYear();
+      return netChanges;
+    };
 
-    // check which expenses have the date property
-    const expenses =
-      month && year
-        ? allExpenses.filter(
-            (expense) =>
-              expense.date.getFullYear() === Number(year) &&
-              expense.date.getMonth() === Number(month) - 1
-          )
-        : allExpenses.filter(
-            (expense) =>
-              expense.date.getMonth() === currentMonth &&
-              expense.date.getFullYear() === currentYear
-          );
+    const netChanges: Record<string, number> =
+      calculateNetChangeForAll(expenses);
 
-    // Find all users in the house
-    const houseMembers = await User.find({ houseCodes: houseCode });
-
-    if (!expenses || !houseMembers) {
-      return res
-        .status(404)
-        .json({ message: "Data not found for the given house" });
-    }
-
-    // Calculate the total monthly cost
-    let totalMonthlyCost = expenses.reduce(
-      (total, expense) => total + expense.cost,
-      0
+    // Categorize into Givers and Receivers
+    const givers: string[] = Object.keys(netChanges).filter(
+      (person) => netChanges[person] > 0
     );
-    totalMonthlyCost = Number(totalMonthlyCost.toFixed(2));
+    const receivers: string[] = Object.keys(netChanges).filter(
+      (person) => netChanges[person] < 0
+    );
 
-    // Calculate the share per member
-    let equalShare = totalMonthlyCost / houseMembers.length;
-
-    equalShare = Number(equalShare.toFixed(2));
-
-    const payments = {} as Record<string, number>;
-
-    // Calculate the actual expenses by each user
-    const actualCostByUser: { [username: string]: number } = {};
-    // Calculate user's expenses for the month by iterating over house members and matching the user id with the expense user id
-    houseMembers.forEach((user) => {
-      const userExpenses = expenses.filter(
-        (expense) => expense.user.toString() === user._id.toString()
-      );
-      let userTotalExpense = 0;
-      userExpenses.forEach((expense) => {
-        userTotalExpense += expense.cost;
-      });
-      actualCostByUser[user.username] = userTotalExpense;
-    });
-
-    const userInvolvedInExpenses: { [username: string]: number } = {};
-
-    houseMembers.forEach((user) => {
-      const userInvolvedExpenses = expenses.filter((expense) =>
-        expense.involvedUsers.includes(user._id.toString())
-      );
-      let totalInvolvedExpense = 0;
-      userInvolvedExpenses.forEach((expense) => {
-        totalInvolvedExpense += expense.cost;
-      });
-      userInvolvedInExpenses[user.username] = totalInvolvedExpense;
-    });
-    const newBalance: { [username: string]: number } = {};
-
-    //compare userInvolvedInExpenses with actualCostByUser and make newBalance
-
-    for (const member of houseMembers) {
-      newBalance[member.username] =
-        actualCostByUser[member.username] -
-        userInvolvedInExpenses[member.username];
+    interface PaymentInstruction {
+      from: string;
+      to: string;
+      amount: number;
     }
 
-    // Calculate payments
-    for (const member of houseMembers) {
-      let balance = equalShare - actualCostByUser[member.username];
-      payments[member.username] = Number(balance.toFixed(2));
-    }
+    const settlePaymentsOptimized = (
+      givers: string[],
+      receivers: string[]
+    ): PaymentInstruction[] => {
+      let payments: PaymentInstruction[] = [];
 
-    // Initialize an object to store payment instructions
-    const paymentsCopy = { ...payments };
+      givers.sort((a, b) => netChanges[b] - netChanges[a]);
+      receivers.sort((a, b) => netChanges[a] - netChanges[b]);
 
-    // Initialize an object to store payment instructions
+      let i = 0;
+      let j = 0;
+      while (i < givers.length && j < receivers.length) {
+        const giver = givers[i];
+        const receiver = receivers[j];
 
-    const paymentInstructions: Record<string, Record<string, number>> = {};
+        const giverAmount = netChanges[giver];
+        const receiverAmount = Math.abs(netChanges[receiver]);
 
-    // Determine payments between members
-    for (const payee of houseMembers) {
-      paymentInstructions[payee.username] = {};
-      for (const payer of houseMembers) {
-        if (payee.username !== payer.username) {
-          const amount =
-            paymentsCopy[payee.username] > 0
-              ? Math.min(
-                  paymentsCopy[payee.username],
-                  -paymentsCopy[payer.username]
-                )
-              : 0;
-          paymentInstructions[payee.username][payer.username] = amount;
-          paymentsCopy[payee.username] -= amount;
-          paymentsCopy[payer.username] += amount;
+        if (giverAmount > receiverAmount) {
+          payments.push({
+            from: giver,
+            to: receiver,
+            amount: receiverAmount,
+          });
+          netChanges[giver] -= receiverAmount;
+          j++;
+        } else if (giverAmount < receiverAmount) {
+          payments.push({
+            from: giver,
+            to: receiver,
+            amount: giverAmount,
+          });
+          netChanges[receiver] += giverAmount;
+          i++;
+        } else {
+          payments.push({
+            from: giver,
+            to: receiver,
+            amount: giverAmount,
+          });
+          i++;
+          j++;
         }
       }
-    }
+
+      return payments;
+    };
+
+    const paymentInstructionsOptimized: PaymentInstruction[] =
+      settlePaymentsOptimized(givers, receivers);
 
     // Prepare and send the response
 
     const response = {
-      totalMonthlyCost,
-      equalShare,
-      userBalance: payments,
-      actualCostByUser,
-      paymentInstructions,
-      userInvolvedInExpenses,
-      newBalance,
+      netChanges,
+      givers,
+      receivers,
+      paymentInstructionsOptimized,
     };
 
     res.status(200).json(response);

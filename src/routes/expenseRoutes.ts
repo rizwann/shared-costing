@@ -2,7 +2,6 @@ import express from "express";
 
 import {
   calculateHouseExpensesAndDebts,
-  calculateHouseExpensesAndDebtsNew,
   createExpense,
   deleteExpense,
   getAllExpensesByUser,
@@ -124,12 +123,6 @@ router.get(
   "/balance/:houseCode/:month/:year",
   checkHouseOwnership,
   calculateHouseExpensesAndDebts
-);
-
-router.get(
-  "/balancenew/:houseCode/:month/:year",
-  checkHouseOwnership,
-  calculateHouseExpensesAndDebtsNew
 );
 
 export default router;
