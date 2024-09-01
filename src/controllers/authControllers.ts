@@ -94,7 +94,7 @@ export const regUser = async (req: Request, res: Response) => {
               <li>Analyze your spending with insightful reports</li>
               <li>And much more!</li>
             </ul>
-            <a href="${APP_URL}" class="button" style="display: inline-block; color: #ffffff; padding: 12px 20px; text-align: center; text-decoration: none; border-radius: 4px; margin-top: 20px; background-color: #7C3AED;">Activate your account</a>
+            <a href="${link}" class="button" style="display: inline-block; color: #ffffff; padding: 12px 20px; text-align: center; text-decoration: none; border-radius: 4px; margin-top: 20px; background-color: #7C3AED;">Activate your account</a>
             <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">If you have any questions or need assistance, our support team is here to help. Feel free to reach out to us at houseexpensemanager@gmail.com.</p>
             <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Once again, welcome to House Expense Manager. We're excited to have you on board!</p>
             <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Best regards,</p>
