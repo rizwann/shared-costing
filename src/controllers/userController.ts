@@ -14,7 +14,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
         return { ...user.toObject(), houseNames };
       })
     );
-    return res.status(200).json({ usersWithHouseNames });
+    return res.status(200).json(usersWithHouseNames);
   } catch (error) {
     return res.status(500).json({ message: "Server error" });
   }
@@ -28,16 +28,11 @@ export const getUserById = async (req: Request, res: Response) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-
-    return res.status(200).json({
-      user: {
-        _id: user._id,
-        email: user.email,
-        username: user.username,
-        houseCodes: user.houseCodes,
-        active: user.active,
-      },
-    });
+   // add house names to user object
+    const houses = await House.find({ code: { $in: user.houseCodes } });
+    
+  
+    return res.status(200).json({ ...user.toObject(), houses });
   } catch (error) {
     return res.status(500).json({ message: "Server error" });
   }
@@ -46,7 +41,9 @@ export const getUserById = async (req: Request, res: Response) => {
 export const updateUsernameEmail = async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
-    const { username, email } = req.body;
+    const { username, email, name } = req.body;
+  const image = req.file ? req.file.path : undefined;
+
 
     const user = await User.findById(userId);
 
@@ -85,12 +82,20 @@ export const updateUsernameEmail = async (req: Request, res: Response) => {
 
       user.email = email;
     }
+    if (name) {
+      user.name = name;
+    }
+    if (image) {
+      user.image = image;
+    }
 
     await user.save();
     return res.status(200).json({
       message: "user updated successfully",
       username: user.username,
       email: user.email,
+      name: user.name || "  ",
+      image: user.image || "  ",
     });
   } catch (error) {
     console.error(error);
@@ -124,3 +129,16 @@ export const updateUserPassword = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+export const getUsersByHouseCode = async (req: Request, res: Response) => {
+  try {
+    const { code } = req.params;
+    const users = await User.find({ houseCodes: code });
+    if (!users) {
+      return res.status(404).json({ message: "Users not found" });
+    }
+    return res.status(200).json(users);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+}

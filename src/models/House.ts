@@ -6,6 +6,7 @@ export interface IHouse extends Document {
   description: string;
   image: string;
   users: string[]; // Array of user ids
+  userNames: string[]; // Array of user names
 }
 
 const HouseSchema: Schema = new Schema({
@@ -23,6 +24,11 @@ const HouseSchema: Schema = new Schema({
   },
   users: {
     type: [Schema.Types.ObjectId], // Array of user ids
+    default: [],
+  },
+  userNames: {
+    //array of user names
+    type: [String],
     default: [],
   },
 });

@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import Store from "../models/Store";
+import Expense from "../models/Expense";
 
 export const createStore = async (req: Request, res: Response) => {
   try {
@@ -76,6 +77,9 @@ export const updateStore = async (req: Request, res: Response) => {
     store.name = name ? name : store.name;
     if (image) {
       store.image = image;
+      //update storeImg in expenses, where storeId equals store.id
+      await Expense.updateMany({ storeId: store.id }, { storeImg: image });
+
     }
 
     await store.save();

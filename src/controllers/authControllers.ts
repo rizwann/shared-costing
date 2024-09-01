@@ -8,7 +8,8 @@ import nodemailer from "nodemailer";
 import { User } from "../models/User";
 
 export const regUser = async (req: Request, res: Response) => {
-  const { username, email, password } = req.body;
+  const { username, email, password, name } = req.body;
+  const image = req.file ? req.file.path : undefined;
 
   try {
     // Validate user input
@@ -34,6 +35,8 @@ export const regUser = async (req: Request, res: Response) => {
       username,
       email,
       password: hashedPassword,
+      name,
+      image,
     });
 
     console.log(user);
@@ -241,7 +244,9 @@ export const login = async (req: Request, res: Response) => {
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
-      return res.status(401).json({ message: "Invalid credentials" });
+      return res.status(401).json({
+        message: "The password that you've entered is incorrect ",
+      });
     }
 
     const token = jwt.sign({ userId: user._id }, "your-secret-key", {
@@ -320,7 +325,7 @@ export const forgetPassword = async (req: Request, res: Response) => {
             <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Hello there,</p>
             <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">You've requested to reset your account password. Click the button below to proceed:</p>
             <a href="${emailLink}" class="button" style="display: inline-block; color: #ffffff; padding: 12px 20px; text-align: center; text-decoration: none; border-radius: 4px; margin-top: 20px; background-color: #7C3AED;">Reset Password</a>
-            <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">If you didn't make this request, you can safely ignore this email.</p>
+            <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">If you didn’t make this request, you can ignore this email and carry on as usual.</p>
             <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Best regards,</p>
             <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Your House Expense Manager Team</p>
           </div>

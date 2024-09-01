@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import Expense, { CategoryName } from "../models/Expense";
 import { User } from "../models/User";
+import Store from "../models/Store";
 
 // Get house expenses by store
 
@@ -79,7 +80,7 @@ export const getUserWeeklyTotal = async (req: Request, res: Response) => {
     const sevenDaysAgo = new Date(today);
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    const weeklyExpenses = await Expense.find({ user: userId, houseCode })
+    const weeklyExpenses = await Expense.find({ userId: userId, houseCode })
       .select("cost date")
       .sort({ date: 1 })
       .gte("date", sevenDaysAgo)
@@ -138,7 +139,7 @@ export const getLast6MonthsExpensesByHouse = async (
     sixMonthsAgo.setDate(1);
     console.log(sixMonthsAgo);
 
-    const allExpenses = await Expense.find({ user: userId, houseCode })
+    const allExpenses = await Expense.find({  userId, houseCode })
       .select("cost date")
       .sort({ date: 1 })
       .gte("date", sixMonthsAgo)
@@ -214,7 +215,95 @@ export const getLast6MonthsExpensesByHouse = async (
     res.status(500).json({ message: "Server error" });
   }
 };
+export const getLast6MonthsExpensesOfHouse = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const { houseCode } = req.params;
+    const { userId } = req.body;
+    const today = new Date();
+    const sixMonthsAgo = new Date(today);
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+    sixMonthsAgo.setDate(1);
+    console.log(sixMonthsAgo);
 
+    const allExpenses = await Expense.find({ houseCode })
+      .select("cost date")
+      .sort({ date: 1 })
+      .gte("date", sixMonthsAgo)
+      .lte("date", today)
+      .exec();
+
+    if (!allExpenses.length) {
+      return res.status(404).json({ message: "No expenses found" });
+    }
+
+    const expenses = allExpenses
+      .map((entry: any) => ({
+        month: entry.date.getMonth(),
+        totalExpense: entry.cost,
+      }))
+      .reduce((acc: any, curr: any) => {
+        if (acc[curr.month]) {
+          acc[curr.month] += curr.totalExpense;
+        } else {
+          acc[curr.month] = curr.totalExpense;
+        }
+        return acc;
+      }, {});
+    const monthsOfTheYear = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+
+    const result = Object.entries(expenses).map((entry: any) => ({
+      month: Number(entry[0]),
+      totalExpense: entry[1],
+    }));
+
+    const finalResult = monthsOfTheYear.map((month, idX) => {
+      const entry = result.find((exp) => exp.month === idX);
+      return {
+        name: month,
+        expenses: entry ? entry.totalExpense.toFixed(2) : 0,
+      };
+    });
+
+    const last6Months = finalResult.slice(
+      sixMonthsAgo.getMonth(),
+      today.getMonth() + 1
+    );
+
+    //find the percentage ... compare the last 5 months average with the current month
+    const currentMonthExpenses = last6Months[last6Months.length - 1].expenses;
+    const last5MonthsExpensesAvg =
+      last6Months
+        .slice(0, last6Months.length - 1)
+        .reduce((total, month) => total + Number(month.expenses), 0) / 5;
+
+    const percentage = Math.round(
+      ((currentMonthExpenses - last5MonthsExpensesAvg) /
+        last5MonthsExpensesAvg) *
+        100
+    );
+
+    res.status(200).json({totalExpensesThisMonth:Number(currentMonthExpenses).toFixed(2), percentage, last6Months });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 export const getCurrentMonthExpensesByHouseMembers = async (
   req: Request,
   res: Response
@@ -225,24 +314,27 @@ export const getCurrentMonthExpensesByHouseMembers = async (
     const currentMonth = today.getMonth();
     const currentYear = today.getFullYear();
 
+    const startOfMonth = new Date(Date.UTC(currentYear, currentMonth, 1));
+    const endOfMonth = new Date(Date.UTC(currentYear, currentMonth + 1, 0, 23, 59, 59, 999));
+    
     const expenses = await Expense.aggregate([
       {
         $match: {
           houseCode,
           date: {
-            $gte: new Date(currentYear, currentMonth, 1),
-            $lte: new Date(currentYear, currentMonth + 1, 0),
+            $gte: startOfMonth,
+            $lte: endOfMonth,
           },
         },
       },
       {
         $group: {
-          _id: "$user",
+          _id: "$userId",
           expenses: { $sum: "$cost" },
         },
       },
     ]);
-
+  
     const users = await User.find({ houseCodes: houseCode });
 
     const result = users.map((user) => {
@@ -251,7 +343,8 @@ export const getCurrentMonthExpensesByHouseMembers = async (
       );
       return {
         name: user.username,
-        expenses: entry ? entry.expenses.toFixed(2) : 0,
+        expenses: entry ? Number(entry.expenses).toFixed(2) : 0,
+        firstName: user.name ? user.name.split(" ")[0] : user.name,
       };
     });
 
@@ -269,7 +362,7 @@ export const getCurrentMonthExpenseComparison = async (
   const { houseCode } = req.params;
   const { userId } = req.body;
   try {
-    const expenses = await Expense.find({ houseCode, user: userId });
+    const expenses = await Expense.find({ houseCode, userId: userId });
 
     if (expenses.length === 0) {
       return res
@@ -339,7 +432,7 @@ export const getCurrentMonthExpensesByCategory = async (
     const { userId } = req.body;
     const today = new Date();
 
-    const expenses = await Expense.find({ houseCode, user: userId })
+    const expenses = await Expense.find({ houseCode, userId: userId })
       .select("category cost")
       .sort({ category: 1 })
       .exec();
@@ -399,7 +492,7 @@ export const getCurrentMonthExpensesByStore = async (
     const { houseCode } = req.params;
     const { userId } = req.body;
 
-    const expenses = await Expense.find({ houseCode, user: userId })
+    const expenses = await Expense.find({ houseCode, userId: userId })
       .select("storeName cost")
       .sort({ storeName: 1 })
       .exec();
@@ -444,7 +537,11 @@ export const getCurrentMonthExpensesByStore = async (
       (highestExpense.expenses / totalExpenses) * 100
     );
 
-    res.status(200).json({ result, highestExpense, percentage });
+    // get the image of the highest expense store
+    const image = await Store.findOne({ name: highestExpense.name }).select
+      ("image")
+
+    res.status(200).json({ result, highestExpense, percentage, image: image?.image });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });
@@ -464,7 +561,7 @@ export const getLast6MonthsExpensesByCategory = async (
     sixMonthsAgo.setDate(1);
     console.log(sixMonthsAgo);
 
-    const allExpenses = await Expense.find({ user: userId, houseCode })
+    const allExpenses = await Expense.find({ houseCode })
       .select("cost date category")
       .sort({ date: 1 })
       .gte("date", sixMonthsAgo)
@@ -541,7 +638,7 @@ export const getLast6MonthsExpensesByCategory = async (
         ...expenses,
       };
     });
-    res.status(200).json({ response });
+    res.status(200).json( response );
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });

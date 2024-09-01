@@ -19,6 +19,7 @@ import {
 } from "../controllers/expenseControllers";
 import {
   authMiddleware,
+  checkExpenseDeleteEditRights,
   checkExpenseOwnership,
   checkExpensesOwnershipAndHouseOwnership,
   checkHouseOwnership,
@@ -41,10 +42,10 @@ router.get("/:expenseId", checkExpenseOwnership, getExpenseById);
 router.get("/user/:userId", getAllExpensesByUser);
 
 // Update an expense by ID
-router.put("/:expenseId", checkExpenseOwnership, updateExpense);
+router.put("/:expenseId", checkExpenseDeleteEditRights, updateExpense);
 
 // Delete an expense by ID
-router.delete("/:expenseId", checkExpenseOwnership, deleteExpense);
+router.delete("/:expenseId", checkExpenseDeleteEditRights, deleteExpense);
 
 // all routes for expenses reporting
 

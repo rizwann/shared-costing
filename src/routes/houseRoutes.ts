@@ -4,6 +4,7 @@ import {
   createHouse,
   deleteHouse,
   getAllHouses,
+  getHouseById,
   getHousesByUserId,
   getSingleHouse,
   getUserByHouseCode,
@@ -37,7 +38,6 @@ router.use(authMiddleware);
 // Create a new house with image upload
 router.post(
   "/create",
-
   upload.single("image"),
   authMiddleware,
   createHouse
@@ -53,6 +53,8 @@ router.get("/users/:code", isHouser, getUserByHouseCode);
 
 router.get("/:code", getSingleHouse);
 
+router.get("/house/:id", isHouseMember, getHouseById);
+
 // Update a house by ID
 router.put(
   "/:id",
@@ -66,9 +68,10 @@ router.put(
 router.delete("/:id", isHouseMember, deleteHouse);
 
 // join a house
-router.post("/join-house", joinHouse);
+router.post("/join-house",upload.none(), authMiddleware, joinHouse);
 
 // Leave a house
 router.post("/leave-house", leaveHouse);
+
 
 export default router;

@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import Expense from "../models/Expense";
 import Store from "../models/Store";
 import { User } from "../models/User";
+import { Expense as IExpense } from "../../types";
+import House from "../models/House";
 
 // Create a new expense
 export const createExpense = async (req: Request, res: Response) => {
@@ -13,19 +15,20 @@ export const createExpense = async (req: Request, res: Response) => {
       description,
       houseCode,
       userId,
+      paymentPerson,
       involvedUsers,
     } = req.body;
-
-    const userHouses = await User.findById(userId).select("houseCodes");
-    const user = await User.findById(userId);
+    
+    const userForPayment = paymentPerson ? paymentPerson : userId
+    const userHouses = await User.findById(userForPayment).select("houseCodes");
+    const user = await User.findById(userForPayment);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-
     if (!userHouses?.houseCodes.includes(houseCode)) {
       return res
         .status(403)
-        .json({ message: "Unauthorized, you are not a member of this house!" });
+        .json({ message: "Unauthorized, the paying person is not a member of this house!" });
     }
 
     const foundStore = await Store.findById(storeId);
@@ -38,7 +41,7 @@ export const createExpense = async (req: Request, res: Response) => {
     const usernames = users.map((user) => user.username);
 
     const involvedUsersNames = involvedUsers
-      ? [...involvedUsers, user.username]
+      ? [...involvedUsers]
       : usernames;
 
     const isInvolvedUsersInHouse = involvedUsersNames.every((user) =>
@@ -50,20 +53,22 @@ export const createExpense = async (req: Request, res: Response) => {
         .json({ message: "Unauthorized, involved users are not in the house" });
     }
     const date = new Date();
-    //Germany time zone
-    date.setHours(date.getHours() + 1);
-
+    // to Germany local time
+    const houseName = await House.findOne({ code: houseCode })
     const newExpense = new Expense({
       user: user.username,
+      userId: user._id,
       storeId,
       cost,
       category,
       description,
       houseCode,
-      date,
+      houseName: houseName?.description,
+      date: req.body.date ? new Date(req.body.date) : date,
       storeName: foundStore.name ? foundStore.name : "",
       storeImg: foundStore.image ? foundStore.image : "",
-      involvedUsers: involvedUsersNames,
+      involvedUsers: [...new Set(involvedUsersNames)],
+      entryBy: userId,
     });
     const savedExpense = await newExpense.save();
 
@@ -120,19 +125,34 @@ export const getExpenseById = async (req: Request, res: Response) => {
 export const updateExpense = async (req: Request, res: Response) => {
   try {
     const { expenseId } = req.params;
-    const { cost, category, description, involvedUsers } = req.body;
+    const { cost, category, description, involvedUsers, storeId } = req.body;
+   
+    let updatedExpense
+    if (storeId) {
+      const foundStore = await Store.findById(storeId);
+      if (!foundStore) {
+        return res.status(404).json({ message: "Store not found" });
+      }
 
-    const expense = await Expense.findByIdAndUpdate(
-      expenseId,
-      { cost, category, description, involvedUsers },
-      { new: true }
-    );
+       updatedExpense = await Expense.findByIdAndUpdate(
+        expenseId,
+        { cost, category, description, involvedUsers, storeId, storeName: foundStore.name, storeImg: foundStore.image },
+        { new: true }
+      );
+    } else {
+       updatedExpense = await Expense.findByIdAndUpdate(
+        expenseId,
+        { cost, category, description, involvedUsers },
+        { new: true }
+      );
+    }
+    
 
-    if (!expense) {
+    if (!updatedExpense) {
       return res.status(404).json({ message: "Expense not found" });
     }
 
-    res.status(200).json(expense);
+    res.status(200).json(updatedExpense);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });
@@ -167,8 +187,8 @@ export const getAllExpensesByUser = async (req: Request, res: Response) => {
       return res
         .status(403)
         .json({ message: "Unauthorized, you only can access your expenses!" });
-
-    const expenses = await Expense.find({ user: userId });
+  console.log("userId", userId, "currentUserId", currentUserId)
+    const expenses = await Expense.find({ userId: userId });
 
     if (!expenses) {
       return res.status(404).json({ message: "Expenses not found" });
@@ -575,6 +595,109 @@ export const calculateHouseExpensesAndDebts = async (
               expense.date.getMonth() === currentMonth &&
               expense.date.getFullYear() === currentYear
           );
+          function calculateBalances(expenses: IExpense[]): Record<string, number> {
+            const balances: Record<string, number> = {};
+        
+            expenses.forEach(({ user, cost, involvedUsers }) => {
+                const share = cost / involvedUsers.length;
+        
+                balances[user] = (balances[user] || 0) + cost;
+                involvedUsers.forEach(person => {
+                    balances[person] = (balances[person] || 0) - share;
+                });
+            });
+        
+            return balances;
+        }
+
+        function calculateTotalExpenseByUser(expenses: IExpense[]): Record<string, number> {
+            const totalExpenseByUser: Record<string, number> = {};
+        
+            expenses.forEach(({ user, cost }) => {
+                totalExpenseByUser[user] = (totalExpenseByUser[user] || 0) + cost;
+            });
+        
+            return totalExpenseByUser;
+        }
+
+        // function minimizedTransactions(balances: Record<string, number>): Record<string, number> {
+        //     const givers: string[] = Object.keys(balances).filter(person => balances[person] > 0);
+        //     const receivers: string[] = Object.keys(balances).filter(person => balances[person] < 0);
+        
+        //     const transactions: Record<string, number> = {};
+        
+        //     let i = 0;
+        //     let j = 0;
+        //     while (i < givers.length && j < receivers.length) {
+        //         const giver = givers[i];
+        //         const receiver = receivers[j];
+        
+        //         const giverAmount = balances[giver];
+        //         const receiverAmount = Math.abs(balances[receiver]);
+        
+        //         if (giverAmount > receiverAmount) {
+        //             transactions[`${giver} -> ${receiver}`] = receiverAmount;
+        //             balances[giver] -= receiverAmount;
+        //             j++;
+        //         } else if (giverAmount < receiverAmount) {
+        //             transactions[`${giver} -> ${receiver}`] = giverAmount;
+        //             balances[receiver] += giverAmount;
+        //             i++;
+        //         } else {
+        //             transactions[`${giver} -> ${receiver}`] = giverAmount;
+        //             i++;
+        //             j++;
+        //         }
+        //     }
+        
+        //     return transactions;
+        // }
+        type Transaction = { from: string; to: string; amount: number };
+
+        function minimizeTransactions(balances: Record<string, number>): Transaction[] {
+          const debts: Transaction[] = [];
+      
+          const creditors = Object.entries(balances).filter(([, balance]) => balance > 0);
+          const debtors = Object.entries(balances).filter(([, balance]) => balance < 0);
+      
+          let i = 0, j = 0;
+      
+          while (i < creditors.length && j < debtors.length) {
+              const [creditor, credit] = creditors[i];
+              const [debtor, debt] = debtors[j];
+              const amount = Math.min(credit, -debt);
+      
+              debts.push({ from: debtor, to: creditor, amount });
+      
+              creditors[i][1] -= amount;
+              debtors[j][1] += amount;
+      
+              if (creditors[i][1] === 0) i++;
+              if (debtors[j][1] === 0) j++;
+          }
+      
+          return debts;
+      }
+
+        const balances = calculateBalances(expenses.map(expense => expense.toObject()))
+        const totalExpenseByUser = calculateTotalExpenseByUser(expenses.map(expense => expense.toObject()))
+        const transactions = minimizeTransactions(balances)
+
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     const calculateNetChange = (
       expenses: typeof allExpenses,
@@ -691,6 +814,9 @@ export const calculateHouseExpensesAndDebts = async (
       givers,
       receivers,
       paymentInstructionsOptimized,
+      balances,
+      totalExpenseByUser,
+      transactions,
     };
 
     res.status(200).json(response);

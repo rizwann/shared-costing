@@ -7,11 +7,13 @@ export interface IExpense extends Document {
   cost: number;
   category: string;
   description: string;
-  user: string; // User id who added the expense
-  houseCode: string; // House id to which the expense is assigned
-  //involved Users
+  user: string;
+  userId: string; // User id who added the expense
+  houseCode: string; 
+  houseName: string;
   involvedUsers: string[];
   date: Date;
+  entryBy: string;
 }
 export enum CategoryName {
   Other = "Other",
@@ -52,6 +54,15 @@ const ExpenseSchema: Schema = new Schema({
     type: String,
     required: true,
   },
+  userId: {
+    type: Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
+  },
+  entryBy: {
+    type: String,
+    required: true
+  },
   houseCode: {
     type: String, //
     required: true,
@@ -66,6 +77,10 @@ const ExpenseSchema: Schema = new Schema({
     type: Date,
     required: true,
   },
+  houseName: {
+    type: String,
+    required: true,
+  }
 });
 
 const Expense = mongoose.model<IExpense>("Expense", ExpenseSchema);

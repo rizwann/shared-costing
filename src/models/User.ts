@@ -6,6 +6,8 @@ export interface IUser {
   password: string;
   active?: boolean;
   houseCodes: string[]; // Array of house codes the user belongs to
+  image?: string;
+  name?: string;
 }
 
 export interface IUserModel extends IUser, Document {}
@@ -19,6 +21,8 @@ const UserSchema: Schema = new Schema({
     type: [String], // Array of house codes
     default: [],
   },
+  image: { type: String },
+  name: { type: String },
 });
 
 export const User: Model<IUserModel> = model<IUserModel>("User", UserSchema);

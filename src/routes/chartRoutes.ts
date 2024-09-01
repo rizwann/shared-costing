@@ -8,6 +8,7 @@ import {
   getHouseExpensesByStores,
   getLast6MonthsExpensesByCategory,
   getLast6MonthsExpensesByHouse,
+  getLast6MonthsExpensesOfHouse,
   getUserWeeklyTotal,
 } from "../controllers/chartDataController";
 import {
@@ -33,6 +34,11 @@ router.get(
   getLast6MonthsExpensesByHouse
 );
 
+router.get(
+  "/house/expenses/half-yearly/:houseCode",
+  checkHouseOwnership,
+  getLast6MonthsExpensesOfHouse
+);
 router.get(
   "/house/expenses/contributions/:houseCode",
   checkHouseOwnership,
