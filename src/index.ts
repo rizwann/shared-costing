@@ -19,7 +19,7 @@ require("dotenv").config();
 
 var corsOptions = {
   // multiple domains
-  origin: ["http://localhost:5173", "http://192.168.2.103:5173"],
+  origin: ["http://localhost:5173", "http://192.168.2.103:5173", "https://expense-man.netlify.app"],
   credentials: true,
   optionsSuccessStatus: 200, // some legacy browsers (IE11, various SmartTVs) choke on 204
 };
