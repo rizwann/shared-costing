@@ -210,15 +210,19 @@ export const isOwner = async (
   try {
     const { userId } = req.params;
     const currentUserId = req.body.userId;
-console.log("currentUserId",currentUserId);
     if (!currentUserId) {
       return res
         .status(403)
         .json({ message: "Unauthorized, you are not allowed" });
     }
+      
+    const user = await User.findById(currentUserId)
 
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
     if (
-      currentUserId.toString() === "653686b3d426931967abc8e3"
+      user.username === "RizwanKabir".toLocaleLowerCase()
     ) {
       return next();
     }
