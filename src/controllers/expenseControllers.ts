@@ -382,7 +382,7 @@ export const getExpensesOfHouse = async (req: Request, res: Response) => {
             totalExpenses: totalExpensesLastMonth,
             expenses: expensesOfLastMonth,
           }
-        : { totalExpenses, expenses }
+        : expenses 
     );
   } catch (error) {
     console.error(error);
@@ -620,38 +620,6 @@ export const calculateHouseExpensesAndDebts = async (
             return totalExpenseByUser;
         }
 
-        // function minimizedTransactions(balances: Record<string, number>): Record<string, number> {
-        //     const givers: string[] = Object.keys(balances).filter(person => balances[person] > 0);
-        //     const receivers: string[] = Object.keys(balances).filter(person => balances[person] < 0);
-        
-        //     const transactions: Record<string, number> = {};
-        
-        //     let i = 0;
-        //     let j = 0;
-        //     while (i < givers.length && j < receivers.length) {
-        //         const giver = givers[i];
-        //         const receiver = receivers[j];
-        
-        //         const giverAmount = balances[giver];
-        //         const receiverAmount = Math.abs(balances[receiver]);
-        
-        //         if (giverAmount > receiverAmount) {
-        //             transactions[`${giver} -> ${receiver}`] = receiverAmount;
-        //             balances[giver] -= receiverAmount;
-        //             j++;
-        //         } else if (giverAmount < receiverAmount) {
-        //             transactions[`${giver} -> ${receiver}`] = giverAmount;
-        //             balances[receiver] += giverAmount;
-        //             i++;
-        //         } else {
-        //             transactions[`${giver} -> ${receiver}`] = giverAmount;
-        //             i++;
-        //             j++;
-        //         }
-        //     }
-        
-        //     return transactions;
-        // }
         type Transaction = { from: string; to: string; amount: number };
 
         function minimizeTransactions(balances: Record<string, number>): Transaction[] {
@@ -682,22 +650,6 @@ export const calculateHouseExpensesAndDebts = async (
         const balances = calculateBalances(expenses.map(expense => expense.toObject()))
         const totalExpenseByUser = calculateTotalExpenseByUser(expenses.map(expense => expense.toObject()))
         const transactions = minimizeTransactions(balances)
-
-      
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     const calculateNetChange = (
       expenses: typeof allExpenses,
