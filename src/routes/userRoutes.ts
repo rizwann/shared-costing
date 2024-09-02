@@ -4,7 +4,8 @@ import {
   getUserById,
   updateUserPassword,
   updateUsernameEmail,
-  getUsersByHouseCode
+  getUsersByHouseCode,
+  deleteUser
 } from "../controllers/userController";
 import {
   authMiddleware,
@@ -32,5 +33,6 @@ router.get("/:userId", isOwner, getUserById);
 router.get("/house/:code", isHouser, getUsersByHouseCode);
 router.put("/:userId", isOwner,upload.single("image"), updateUsernameEmail);
 router.put("/:userId/change-password", isOwner, updateUserPassword);
+router.delete("/:userId", isAdmin, deleteUser);
 
 export default router;
