@@ -52,7 +52,7 @@ export const regUser = async (req: Request, res: Response) => {
       expiresIn: "1y",
     });
     const link = `${APP_URL}/api/auth/activate/${user._id}/${token}`;
-    const emailLink = `${FE_URL}/activate/${user._id}?token=${token}`;
+    const emailLink = `${FE_URL}/auth/activate/${user._id}?token=${token}`;
 
     const transporter = nodemailer.createTransport({
       service: "gmail",
@@ -94,8 +94,8 @@ export const regUser = async (req: Request, res: Response) => {
               <li>Analyze your spending with insightful reports</li>
               <li>And much more!</li>
             </ul>
-            <a href="${link}" class="button" style="display: inline-block; color: #ffffff; padding: 12px 20px; text-align: center; text-decoration: none; border-radius: 4px; margin-top: 20px; background-color: #7C3AED;">Activate your account</a>
-            <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">If you have any questions or need assistance, our support team is here to help. Feel free to reach out to us at houseexpensemanager@gmail.com.</p>
+            <a href="${emailLink}" class="button" style="display: inline-block; color: #ffffff; padding: 12px 20px; text-align: center; text-decoration: none; border-radius: 4px; margin-top: 20px; background-color: #7C3AED;">Activate your account</a>
+            <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">If you have any questions or need assistance, our support team is here to help. Feel free to reach out to us at pranto@outlook.de.</p>
             <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Once again, welcome to House Expense Manager. We're excited to have you on board!</p>
             <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Best regards,</p>
             <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Your House Expense Manager Team</p>
