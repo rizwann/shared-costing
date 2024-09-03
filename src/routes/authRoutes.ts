@@ -1,20 +1,37 @@
 // authRoutes.ts
-import express from "express";
-import { check } from "express-validator";
-import { activateUser, login, regUser } from "../controllers/authControllers"; // Import controller functions
-import multer from "multer";
+import express from "express"
+import { check } from "express-validator"
+import { activateUser, login, regUser } from "../controllers/authControllers" // Import controller functions
+import multer from "multer"
+import { CloudinaryStorage } from "multer-storage-cloudinary"
+import { v2 as cloudinary } from "cloudinary"
 
-const router = express.Router();
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    cb(null, "uploads");
-  },
-  filename: (req, _file, cb) => {
-    cb(null, Date.now() + "-" + req.body.username); // Define the file name
-  },
-});
+const router = express.Router()
 
-const upload = multer({ storage });
+// Configure Cloudinary Storage with Transformations
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+})
+
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: async (req, file) => {
+    return {
+      folder: "user",
+      format: "jpg", // Automatically convert to jpg
+      public_id: Date.now() + "-" + req.body.username,
+      transformation: [
+        { width: 800, height: 600, crop: "limit" }, // Resize with a limit
+        { quality: "auto" }, // Automatic quality adjustment
+        { fetch_format: "auto" }, // Automatic format selection (e.g., WebP)
+      ],
+    }
+  },
+})
+
+const upload = multer({ storage })
 // Registration route
 router.post(
   "/register",
@@ -27,19 +44,19 @@ router.post(
     }),
   ],
   regUser
-);
+)
 
 //authCheck route
 // router.post("/auth-check", authCheck);
 
 // Login route
-router.post("/login", login);
+router.post("/login", login)
 
 // Logout route
 
 // router.get("/logout", logout);
 
 //actuvate account route
-router.get("/activate/:id/:token", activateUser);
+router.get("/activate/:id/:token", activateUser)
 
-export default router;
+export default router
