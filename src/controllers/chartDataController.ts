@@ -432,7 +432,7 @@ export const getCurrentMonthExpensesByCategory = async (
     const { userId } = req.body;
     const today = new Date();
 
-    const expenses = await Expense.find({ houseCode, userId: userId })
+    const expenses = await Expense.find({ houseCode })
       .select("category cost")
       .sort({ category: 1 })
       .exec();
@@ -492,7 +492,7 @@ export const getCurrentMonthExpensesByStore = async (
     const { houseCode } = req.params;
     const { userId } = req.body;
 
-    const expenses = await Expense.find({ houseCode, userId: userId })
+    const expenses = await Expense.find({ houseCode })
       .select("storeName cost")
       .sort({ storeName: 1 })
       .exec();
