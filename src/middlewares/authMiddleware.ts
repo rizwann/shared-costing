@@ -217,12 +217,14 @@ export const isOwner = async (
     }
       
     const user = await User.findById(currentUserId)
+    
+    const reqUser = await User.findById(userId);
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
     if (
-      user.username === "RizwanKabir".toLocaleLowerCase()
+      reqUser && reqUser.username === "RizwanKabir".toLocaleLowerCase()
     ) {
       return next();
     }
