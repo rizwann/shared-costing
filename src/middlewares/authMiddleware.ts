@@ -221,10 +221,10 @@ export const isOwner = async (
     const reqUser = await User.findById(userId);
 
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "You are not  authenticated" });
     }
     if (
-      reqUser && reqUser.username === "RizwanKabir".toLocaleLowerCase()
+      user && user.username.toLocaleLowerCase() === "RizwanKabir".toLocaleLowerCase()
     ) {
       return next();
     }
