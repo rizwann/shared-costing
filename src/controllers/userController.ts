@@ -3,6 +3,7 @@ import bcrypt from "bcrypt";
 import { Request, Response } from "express";
 import House from "../models/House";
 import { User } from "../models/User";
+import Expense from "../models/Expense";
 
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
@@ -65,7 +66,20 @@ export const updateUsernameEmail = async (req: Request, res: Response) => {
           .json({ message: "This username is already taken" });
       }
 
-      user.username = username;
+
+    await Expense.updateMany(
+      { involvedUsers: user.username },
+      { $set: { "involvedUsers.$": username } }
+    )
+
+    await House.updateMany(
+      { userNames: user.username },
+      { $set: { "userNames.$": username } }
+    );
+   
+
+    user.username = username;
+
     }
 
     if (email) {
