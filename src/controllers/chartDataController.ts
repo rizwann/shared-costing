@@ -291,12 +291,15 @@ export const getLast6MonthsExpensesOfHouse = async (
       last6Months
         .slice(0, last6Months.length - 1)
         .reduce((total, month) => total + Number(month.expenses), 0) / 5;
-
-    const percentage = Math.round(
+    
+    let percentage = Math.round(
       ((currentMonthExpenses - last5MonthsExpensesAvg) /
         last5MonthsExpensesAvg) *
         100
     );
+    if(percentage === null){
+      percentage = 0
+    }
 
     res.status(200).json({totalExpensesThisMonth:Number(currentMonthExpenses).toFixed(2), percentage, last6Months });
   } catch (error) {
