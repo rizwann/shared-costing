@@ -22,6 +22,10 @@ export enum CategoryName {
   Clothing = "Clothing",
   Entertainment = "Entertainment",
   Butcher = "Butcher",
+  Travel = "Travel",
+  Electronics = "Electronics",
+  Utilities = "Utilities",
+  Health = "Health",
 }
 
 const ExpenseSchema: Schema = new Schema({
