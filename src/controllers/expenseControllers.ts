@@ -324,8 +324,8 @@ export const getExpensesOfHouse = async (req: Request, res: Response) => {
   try {
     const { houseCode } = req.params;
     const { currentMonth, lastMonth } = req.query;
-
-    const expenses = await Expense.find({ houseCode: houseCode });
+    const expenses = await Expense.find({ houseCode: houseCode })
+      .sort({ date: -1 });
 
     if (expenses.length === 0) {
       return res
