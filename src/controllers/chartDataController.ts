@@ -434,20 +434,22 @@ export const getCurrentMonthExpensesByCategory = async (
     const { houseCode } = req.params;
     const { userId } = req.body;
     const today = new Date();
+   const currentMonth = today.getMonth()
 
-    const expenses = await Expense.find({ houseCode })
+    const currentMonthExpenses = await Expense.find({ houseCode })
       .select("category cost")
       .sort({ category: 1 })
+      .gte("date", new Date(today.getFullYear(), currentMonth, 1))
       .exec();
 
-    if (expenses.length === 0) {
+    if (currentMonthExpenses.length === 0) {
       return res
         .status(404)
         .json({ message: "No expenses found for this user" });
     }
 
     //group by category
-    const expensesByCategory = expenses.reduce((acc: any, curr: any) => {
+    const expensesByCategory = currentMonthExpenses.reduce((acc: any, curr: any) => {
       if (acc[curr.category]) {
         acc[curr.category] += curr.cost;
       } else {
@@ -494,10 +496,13 @@ export const getCurrentMonthExpensesByStore = async (
   try {
     const { houseCode } = req.params;
     const { userId } = req.body;
+    const today = new Date();
+    const currentMonth = today.getMonth();
 
     const expenses = await Expense.find({ houseCode })
       .select("storeName cost")
       .sort({ storeName: 1 })
+      .gte("date", new Date(today.getFullYear(), currentMonth, 1))
       .exec();
 
     if (expenses.length === 0) {
