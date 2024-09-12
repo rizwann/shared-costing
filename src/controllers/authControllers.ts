@@ -6,6 +6,7 @@ import { validationResult } from "express-validator";
 import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
 import { User } from "../models/User";
+import House from "../models/House";
 
 export const regUser = async (req: Request, res: Response) => {
   const { username, email, password, name } = req.body;
@@ -225,7 +226,7 @@ export const activateUser = async (req: Request, res: Response) => {
 
 export const login = async (req: Request, res: Response) => {
   const { email, password, username } = req.body;
-
+  console.log("login initiated");
   try {
     if (!(email || username) || !password) {
       return res
@@ -257,14 +258,17 @@ export const login = async (req: Request, res: Response) => {
       maxAge: 1000 * 60 * 60 * 24 * 365, // 1 year
       domain: process.env.FRONTEND_URL,
     });
-
+// add house names to user object
+const houses = await House.find({ code: { $in: user.houseCodes } });
+    
+  
+// return res.status(200).json({ ...user.toObject(), houses });
     return res.status(200).json({
       token,
       user: {
-        _id: user._id,
-        email: user.email,
-        username: user.username,
-        houseCodes: user.houseCodes,
+       ...user.toObject(),
+        houses
+
       },
     });
   } catch (error) {

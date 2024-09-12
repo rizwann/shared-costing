@@ -259,7 +259,7 @@ export const isHouseMember = async (
 
     const admin =
       user?.username.toLocaleLowerCase() === "Rizwan".toLocaleLowerCase() ||
-      user?.username === "RizwanKabir".toLocaleLowerCase();
+      user?.username.toLocaleLowerCase() === "RizwanKabir".toLocaleLowerCase();
 
     if(admin){
       return next();
