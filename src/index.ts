@@ -1,7 +1,7 @@
 import bodyParser from "body-parser";
 import compression from "compression";
 import cookieParser from "cookie-parser";
-import cors from "cors";
+import cors, { CorsOptions } from "cors";
 import express from "express";
 import mongoose from "mongoose";
 import { v2 as cloudinary } from 'cloudinary'
@@ -24,13 +24,24 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-var corsOptions = {
-  // multiple domains
-  origin: ["http://localhost:5173", "http://192.168.2.103:5173", "https://expense-man.netlify.app", "capacitor://localhost","http://localhost"],
+// var corsOptions = {
+//   // multiple domains
+//   origin: ["http://localhost:5173", "http://192.168.2.103:5173", "https://expense-man.netlify.app", "capacitor://localhost","http://localhost"],
+//   credentials: true,
+//   optionsSuccessStatus: 200, // some legacy browsers (IE11, various SmartTVs) choke on 204
+// };
+const corsOptions: CorsOptions = {
+  origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
+    const allowedOrigins = ["http://localhost:5173", "http://192.168.2.103:5173", "https://expense-man.netlify.app", "capacitor://localhost","http://localhost", "null"]; // Add "null" for mobile apps
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   credentials: true,
-  optionsSuccessStatus: 200, // some legacy browsers (IE11, various SmartTVs) choke on 204
+  optionsSuccessStatus: 200,
 };
-
 // Middleware
 app.use(cookieParser());
 
