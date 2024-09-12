@@ -268,7 +268,6 @@ const houses = await House.find({ code: { $in: user.houseCodes } });
       user: {
        ...user.toObject(),
         houses
-
       },
     });
   } catch (error) {
