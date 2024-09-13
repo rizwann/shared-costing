@@ -30,19 +30,25 @@ cloudinary.config({
 //   credentials: true,
 //   optionsSuccessStatus: 200, // some legacy browsers (IE11, various SmartTVs) choke on 204
 // };
-const corsOptions: CorsOptions = {
-  origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
-    const allowedOrigins = ["http://localhost:5173", "http://192.168.2.103:5173", "https://expense-man.netlify.app", "capacitor://localhost","http://localhost", "null", "undefined"]; // Add "null" for mobile apps
-    console.log("origin", origin);
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
+
+const corsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps) or from specific origins
+    if (!origin) {
+      // Allow requests with no origin
+      console.log("No origin", origin);
+      return callback(null, true);
     }
-  },
-  credentials: true,
-  optionsSuccessStatus: 200,
+    // You can add your specific domain origins here
+    const allowedOrigins = ["http://localhost:5173", "http://192.168.2.103:5173", "https://expense-man.netlify.app", "capacitor://localhost","http://localhost"];
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      return callback(null, true);
+    } else {
+      return callback(new Error('Not allowed by CORS'));
+    }
+  }
 };
+
 // Middleware
 app.use(cookieParser());
 
