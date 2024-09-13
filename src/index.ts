@@ -33,6 +33,7 @@ cloudinary.config({
 const corsOptions: CorsOptions = {
   origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
     const allowedOrigins = ["http://localhost:5173", "http://192.168.2.103:5173", "https://expense-man.netlify.app", "capacitor://localhost","http://localhost", "null"]; // Add "null" for mobile apps
+    console.log("origin", origin);
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
