@@ -24,33 +24,35 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// var corsOptions = {
-//   // multiple domains
-//   origin: ["http://localhost:5173", "http://192.168.2.103:5173", "https://expense-man.netlify.app", "capacitor://localhost","http://localhost"],
-//   credentials: true,
-//   optionsSuccessStatus: 200, // some legacy browsers (IE11, various SmartTVs) choke on 204
-// };
-
-const corsOptions: cors.CorsOptions = {
-  origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps) or from specific origins
-    if (!origin) {
-      // Allow requests with no origin
-      console.log("No origin", origin);
-      return callback(null, true);
-    }
-    // You can add your specific domain origins here
-    const allowedOrigins = ["http://localhost:5173", "http://192.168.2.103:5173", "https://expense-man.netlify.app", "capacitor://localhost","http://localhost"];
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      return callback(null, true);
-    } else {
-      return callback(new Error('Not allowed by CORS'));
-    }
-  }
+var corsOptions = {
+  // multiple domains and also mobile apps
+// allow mobile apps to access the server, which has no origin
+  origin: ["http://localhost:5173", "http://192.168.2.103:5173", "https://expense-man.netlify.app", "capacitor://localhost","http://localhost"],
+  credentials: true,
+  optionsSuccessStatus: 200, // some legacy browsers (IE11, various SmartTVs) choke on 204
 };
+
+// const corsOptions: cors.CorsOptions = {
+//   origin: (origin, callback) => {
+//     // Allow requests with no origin (like mobile apps) or from specific origins
+//     if (!origin) {
+//       // Allow requests with no origin
+//       console.log("No origin", origin);
+//       return callback(null, true);
+//     }
+//     // You can add your specific domain origins here
+//     const allowedOrigins = ["http://localhost:5173", "http://192.168.2.103:5173", "https://expense-man.netlify.app", "capacitor://localhost","http://localhost"];
+//     if (allowedOrigins.indexOf(origin) !== -1) {
+//       return callback(null, true);
+//     } else {
+//       return callback(new Error('Not allowed by CORS'));
+//     }
+//   }
+// };
 
 // Middleware
 app.use(cookieParser());
+ 
 
 app.use(cors(corsOptions));
 app.use("/uploads", express.static("uploads"));
