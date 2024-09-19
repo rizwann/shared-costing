@@ -2,8 +2,7 @@ import mongoose, { Document, Schema } from "mongoose";
 
 export interface IExpense extends Document {
   storeName?: string;
-  storeImg?: string;
-  storeId: string;
+  receipt?: string;
   cost: number;
   category: string;
   description: string;
@@ -32,13 +31,8 @@ const ExpenseSchema: Schema = new Schema({
   storeName: {
     type: String,
   },
-  storeImg: {
+  receipt: {
     type: String,
-  },
-  storeId: {
-    type: Schema.Types.ObjectId,
-    ref: "Store",
-    required: true,
   },
   cost: {
     type: Number,

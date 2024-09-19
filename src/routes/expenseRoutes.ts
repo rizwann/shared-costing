@@ -24,13 +24,43 @@ import {
   checkExpensesOwnershipAndHouseOwnership,
   checkHouseOwnership,
 } from "../middlewares/authMiddleware";
+import { v2 as cloudinary } from "cloudinary"
+import { CloudinaryStorage } from "multer-storage-cloudinary";
+import multer from "multer";
+
 
 const router = express.Router();
+
+// Configure Cloudinary Storage with Transformations
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+})
+
+// Correct Cloudinary Storage configuration
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: async (req, file) => {
+    return {
+      folder: "receipts",
+      format: "jpg", // Automatically convert to jpg
+      public_id: Date.now() + "-" + req.body.description,
+      transformation: [
+        { width: 800, height: 600, crop: "limit" }, // Resize with a limit
+        { quality: "auto" }, // Automatic quality adjustment
+        { fetch_format: "auto" }, // Automatic format selection (e.g., WebP)
+      ],
+    }
+  },
+})
+
+const upload = multer({ storage })
 
 router.use(authMiddleware);
 
 // Create a new expense
-router.post("/create", createExpense);
+router.post("/create", upload.single("receipt"), authMiddleware, createExpense);
 
 // Get all expenses
 //router.get("/", getAllExpenses);
@@ -42,7 +72,7 @@ router.get("/:expenseId", checkExpenseOwnership, getExpenseById);
 router.get("/user/:userId", getAllExpensesByUser);
 
 // Update an expense by ID
-router.put("/:expenseId", checkExpenseDeleteEditRights, updateExpense);
+router.put("/:expenseId", upload.single("receipt"), checkExpenseDeleteEditRights, updateExpense);
 
 // Delete an expense by ID
 router.delete("/:expenseId", checkExpenseDeleteEditRights, deleteExpense);

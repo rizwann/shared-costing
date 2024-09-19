@@ -1,7 +1,7 @@
 export interface Expense {
   _id: string;
   storeName: string;
-  storeImg: string;
+  receipt: string;
   storeId: string;
   cost: number;
   category: string;

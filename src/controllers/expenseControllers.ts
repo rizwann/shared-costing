@@ -9,7 +9,7 @@ import House from "../models/House";
 export const createExpense = async (req: Request, res: Response) => {
   try {
     const {
-      storeId,
+      storeName,
       cost,
       category,
       description,
@@ -18,7 +18,8 @@ export const createExpense = async (req: Request, res: Response) => {
       paymentPerson,
       involvedUsers,
     } = req.body;
-    
+    const receipt = req.file ? req.file.path : undefined;
+    console.log("receipt", receipt)
     const userForPayment = paymentPerson ? paymentPerson : userId
     const userHouses = await User.findById(userForPayment).select("houseCodes");
     const user = await User.findById(userForPayment);
@@ -31,10 +32,10 @@ export const createExpense = async (req: Request, res: Response) => {
         .json({ message: "Unauthorized, the paying person is not a member of this house!" });
     }
 
-    const foundStore = await Store.findById(storeId);
-    if (!foundStore) {
-      return res.status(404).json({ message: "Store not found" });
-    }
+    // const foundStore = await Store.findById(storeId);
+    // if (!foundStore) {
+    //   return res.status(404).json({ message: "Store not found" });
+    // }
 
     // check if the involved users are members of the house
     const users = await User.find({ houseCodes: houseCode });
@@ -58,15 +59,14 @@ export const createExpense = async (req: Request, res: Response) => {
     const newExpense = new Expense({
       user: user.username,
       userId: user._id,
-      storeId,
       cost,
       category,
       description,
       houseCode,
       houseName: houseName?.description,
       date: req.body.date ? new Date(req.body.date) : date,
-      storeName: foundStore.name ? foundStore.name : "",
-      storeImg: foundStore.image ? foundStore.image : "",
+      storeName,
+      receipt,
       involvedUsers: [...new Set(involvedUsersNames)],
       entryBy: userId,
     });
@@ -125,27 +125,28 @@ export const getExpenseById = async (req: Request, res: Response) => {
 export const updateExpense = async (req: Request, res: Response) => {
   try {
     const { expenseId } = req.params;
-    const { cost, category, description, involvedUsers, storeId } = req.body;
+    const { cost, category, description, involvedUsers, storeName } = req.body;
+    const receipt = req.file ? req.file.path : undefined;
    
-    let updatedExpense
-    if (storeId) {
-      const foundStore = await Store.findById(storeId);
-      if (!foundStore) {
-        return res.status(404).json({ message: "Store not found" });
-      }
+   
+    // if (storeId) {
+    //   const foundStore = await Store.findById(storeId);
+    //   if (!foundStore) {
+    //     return res.status(404).json({ message: "Store not found" });
+    //   }
 
-       updatedExpense = await Expense.findByIdAndUpdate(
+      const updatedExpense = await Expense.findByIdAndUpdate(
         expenseId,
-        { cost, category, description, involvedUsers, storeId, storeName: foundStore.name, storeImg: foundStore.image },
+        { cost, category, description, involvedUsers, storeName, receipt },
         { new: true }
       );
-    } else {
-       updatedExpense = await Expense.findByIdAndUpdate(
-        expenseId,
-        { cost, category, description, involvedUsers },
-        { new: true }
-      );
-    }
+    // } else {
+    //    updatedExpense = await Expense.findByIdAndUpdate(
+    //     expenseId,
+    //     { cost, category, description, involvedUsers },
+    //     { new: true }
+    //   );
+    // }
     
 
     if (!updatedExpense) {
