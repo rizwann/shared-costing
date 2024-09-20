@@ -134,6 +134,7 @@ export const updateExpense = async (req: Request, res: Response) => {
     //   if (!foundStore) {
     //     return res.status(404).json({ message: "Store not found" });
     //   }
+    console.log("receipt", receipt)
 
       const updatedExpense = await Expense.findByIdAndUpdate(
         expenseId,
@@ -188,7 +189,6 @@ export const getAllExpensesByUser = async (req: Request, res: Response) => {
       return res
         .status(403)
         .json({ message: "Unauthorized, you only can access your expenses!" });
-  console.log("userId", userId, "currentUserId", currentUserId)
     const expenses = await Expense.find({ userId: userId });
 
     if (!expenses) {

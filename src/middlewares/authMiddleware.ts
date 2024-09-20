@@ -12,7 +12,6 @@ export const authMiddleware = (
   next: NextFunction
 ) => {
   const token = req.headers.authorization?.split(" ")[1];
-  console.log(token);
   if (!token) {
     return res.status(401).json({ message: "Unauthorized, no token found" });
   }
@@ -20,7 +19,6 @@ export const authMiddleware = (
   try {
     const decoded: any = jwt.verify(token, "your-secret-key");
     req.body.userId = decoded.userId;
-    console.log("decoded", decoded.userId);
     next();
   } catch (error) {
     return res.status(401).json({ message: "Unauthorized!" });
@@ -36,7 +34,7 @@ export const checkExpenseDeleteEditRights = async (
     const userId = req.body.userId;
     //get the expense by id and if it does not exist return 404, dont go to catch block
     const expense = await Expense.findById(expenseId); // Find the expense by ID
-
+console.log("userId",userId)
     if (!expense) {
       return res.status(404).json({ message: "Expense not found" });
     }
@@ -156,7 +154,6 @@ export const checkHouseOwnership = async (
 ) => {
   try {
     const { houseCode } = req.params;
-    console.log(houseCode);
     const userId = req.body.userId;
 
     const userHouses = await User.findById(userId).select("houseCodes");

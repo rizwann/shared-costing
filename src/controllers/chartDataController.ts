@@ -137,7 +137,6 @@ export const getLast6MonthsExpensesByHouse = async (
     const sixMonthsAgo = new Date(today);
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
     sixMonthsAgo.setDate(1);
-    console.log(sixMonthsAgo);
 
     const allExpenses = await Expense.find({  userId, houseCode })
       .select("cost date")
@@ -226,7 +225,6 @@ export const getLast6MonthsExpensesOfHouse = async (
     const sixMonthsAgo = new Date(today);
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
     sixMonthsAgo.setDate(1);
-    console.log(sixMonthsAgo);
 
     const allExpenses = await Expense.find({ houseCode })
       .select("cost date")
@@ -413,7 +411,6 @@ export const getCurrentMonthExpenseComparison = async (
         100
     );
 
-    console.log(percentage);
 
     res.status(200).json({
       totalExpensesThisMonth,
@@ -567,7 +564,6 @@ export const getLast6MonthsExpensesByCategory = async (
     const sixMonthsAgo = new Date(today);
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
     sixMonthsAgo.setDate(1);
-    console.log(sixMonthsAgo);
 
     const allExpenses = await Expense.find({ houseCode })
       .select("cost date category")
@@ -635,7 +631,6 @@ export const getLast6MonthsExpensesByCategory = async (
       const monthName = month.name;
       const expenses = month.expenses;
       const categories = Object.values(CategoryName);
-      console.log(categories);
       const expensesObj: any = {};
       categories.forEach((category) => {
         expensesObj[category] = 0;

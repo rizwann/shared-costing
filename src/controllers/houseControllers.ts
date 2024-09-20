@@ -252,7 +252,6 @@ export const joinHouse = async (req: Request, res: Response) => {
 
 export const getAllHouses = async (req: Request, res: Response) => {
   try {
-    console.log(req.body);
     const houses = await House.find();
 
     if (!houses) {

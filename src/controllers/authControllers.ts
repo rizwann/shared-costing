@@ -40,7 +40,6 @@ export const regUser = async (req: Request, res: Response) => {
       image,
     });
 
-    console.log(user);
 
     await user.save();
 
@@ -215,7 +214,6 @@ export const activateUser = async (req: Request, res: Response) => {
 
     return res.status(200).json({ message: "Account activated successfully" });
   } catch (error: any) {
-    console.log(error.message);
     res.status(500).json({
       message: error.message
         ? "Activation Link is Expired or Invalid"
@@ -226,7 +224,6 @@ export const activateUser = async (req: Request, res: Response) => {
 
 export const login = async (req: Request, res: Response) => {
   const { email, password, username } = req.body;
-  console.log("login initiated");
   try {
     if (!(email || username) || !password) {
       return res
