@@ -66,7 +66,7 @@ export const createExpense = async (req: Request, res: Response) => {
       houseName: houseName?.description,
       date: req.body.date ? new Date(req.body.date) : date,
       storeName,
-      receipt,
+      receipt: receipt ? receipt : undefined,
       involvedUsers: [...new Set(involvedUsersNames)],
       entryBy: userId,
     });

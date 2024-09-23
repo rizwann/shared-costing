@@ -72,7 +72,7 @@ router.get("/:expenseId", checkExpenseOwnership, getExpenseById);
 router.get("/user/:userId", getAllExpensesByUser);
 
 // Update an expense by ID
-router.put("/:expenseId", upload.single("receipt"), authMiddleware,checkExpenseDeleteEditRights, updateExpense);
+router.post("/:expenseId", upload.single("receipt"), authMiddleware,checkExpenseDeleteEditRights, updateExpense);
 
 // Delete an expense by ID
 router.delete("/:expenseId", checkExpenseDeleteEditRights, deleteExpense);
