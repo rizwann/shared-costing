@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import Expense from "../models/Expense";
 import Store from "../models/Store";
-import { User } from "../models/User";
+import { IUser, User } from "../models/User";
 import { Expense as IExpense } from "../../types";
 import House from "../models/House";
 
@@ -71,6 +71,83 @@ export const createExpense = async (req: Request, res: Response) => {
       entryBy: userId,
     });
     const savedExpense = await newExpense.save();
+
+    //send email to the involved users about the expense
+    const involvedUsersEmails = users 
+      .filter((user) => involvedUsersNames.includes(user.username))
+      .map((user) => user.email);
+    console.log("involvedUsersEmails", involvedUsersEmails)
+    // send email to the involved users
+    const FE_URL = process.env.FRONTEND_URL as string;
+   const emailLink = `${FE_URL}/expenses/${savedExpense._id}`;
+   const sendEmail = async (email: string, user: IUser) => {
+      const nodemailer = require("nodemailer");
+      const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: process.env.APP_EMAIL as string,
+          pass: process.env.APP_PASSWORD as string,
+        },
+      });
+
+      const mailOptions = {
+        from:{
+          name: "House Expense Manager",
+          address: process.env.APP_EMAIL as string
+        },
+        to: email,
+        subject: ` New Expense added to ${houseName?.description}`,
+        html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                background-color: #f3f3f3;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container" style="background-color: #ffffff; border-radius: 5px; padding: 20px; margin: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.1;">
+              <img src="${process.env.LOGO_URL}" alt="House Ex Manager" class="logo" style="width: 100px; height: 100px;" />
+              <h2 style="color: #333;">
+               A New Expense has been added to ${houseName?.description}
+              </h2>
+              <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Hello ${
+                user.name
+              },</p>
+               <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">A new expense has been added to ${
+                houseName?.description
+              } by ${savedExpense.user}.</p>
+              <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Category: ${category}</p>
+              <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Cost: ${cost}</p>
+              <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Description: ${description}</p>
+              <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Store: ${storeName}</p>
+              <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Date: ${date}</p>
+              <a href="${emailLink}" class="button" style="display: inline-block; color: #ffffff; padding: 12px 20px; text-align: center; text-decoration: none; border-radius: 4px; margin-top: 20px; background-color: #7C3AED;">Go to the expense</a>
+              <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">You can check the expense in the app.</p>
+
+              <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Best regards,</p>
+              <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Your House Expense Manager Team</p>
+            </div>
+          </body>
+        </html>
+        `,
+      };
+
+      transporter.sendMail(mailOptions, (error: any, info: any) => {
+        if (error) {
+          console.log(error);
+        } else {
+          console.log("Email sent: " + info.response);
+        }
+      });
+    }
+
+    involvedUsersEmails.forEach((email) => {
+      sendEmail(email, user);
+    });
 
     res.status(201).json(savedExpense);
   } catch (error: any) {
