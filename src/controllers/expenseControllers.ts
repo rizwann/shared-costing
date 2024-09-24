@@ -73,14 +73,22 @@ export const createExpense = async (req: Request, res: Response) => {
     const savedExpense = await newExpense.save();
 
     //send email to the involved users about the expense
-    const involvedUsersEmails = users 
+    const involvedUsersWithEmails = users 
       .filter((user) => involvedUsersNames.includes(user.username))
-      .map((user) => user.email);
-    console.log("involvedUsersEmails", involvedUsersEmails)
+      .map((user) => {
+        return {
+          email: user.email,
+          name: user.name,
+        };
+        }
+      );
+      
+    console.log("involvedUsersEmails", involvedUsersWithEmails)
     // send email to the involved users
     const FE_URL = process.env.FRONTEND_URL as string;
-   const emailLink = `${FE_URL}/expenses/${savedExpense._id}`;
-   const sendEmail = async (email: string, user: IUser) => {
+   const emailLink = `${FE_URL}/expenses/${savedExpense._id}`
+
+   const sendEmail = async (email: string, name : string) => {
       const nodemailer = require("nodemailer");
       const transporter = nodemailer.createTransport({
         service: "gmail",
@@ -115,7 +123,7 @@ export const createExpense = async (req: Request, res: Response) => {
                A New Expense has been added to ${houseName?.description}
               </h2>
               <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Hello ${
-                user.name
+                name
               },</p>
                <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">A new expense has been added to ${
                 houseName?.description
@@ -144,9 +152,9 @@ export const createExpense = async (req: Request, res: Response) => {
         }
       });
     }
-
-    involvedUsersEmails.forEach((email) => {
-      sendEmail(email, user);
+ involvedUsers
+ involvedUsersWithEmails.forEach((user) => {
+      sendEmail(user.email, user.name!);
     });
 
     res.status(201).json(savedExpense);
