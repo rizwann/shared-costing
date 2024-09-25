@@ -246,7 +246,7 @@ export const joinHouse = async (req: Request, res: Response) => {
               address: process.env.APP_EMAIL as string
             },
             to: email,
-            subject: "Join House",
+            subject: "Join House Request",
             html: `
             <!DOCTYPE html>
         <html>
@@ -353,7 +353,7 @@ export const acceptUser = async (req: Request, res: Response) => {
           address: process.env.APP_EMAIL as string,
         },
         to: email,
-        subject: "Join House",
+        subject: "Housed Joined Successfully",
         html: `
             <!DOCTYPE html>
         <html>
