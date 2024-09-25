@@ -3,6 +3,9 @@ import House from "../models/House";
 import { User } from "../models/User";
 import Expense from "../models/Expense";
 
+const nodemailer = require("nodemailer")
+
+
 export const createHouse = async (req: Request, res: Response) => {
   try {
     const { code, description, userId } = req.body;
@@ -227,15 +230,81 @@ export const joinHouse = async (req: Request, res: Response) => {
     if (user) {
       // Check if the user is not already in the house
       if (!user.houseCodes.includes(code)) {
-        user.houseCodes.push(code); // Add the house code to user's houseCodes array
-        await user.save();
-        if (!house.users.includes(user._id)) {
-          house.users.push(user._id); // Add the user to the house's users array
-          // add user name to house's userNames array
-          house.userNames.push(user.username)
-          await house.save();
+        const FE_URL = process.env.FRONTEND_URL as string
+        const sendEmail = (email: string, name: string, ownId: string) => {
+        const emailLink = `${FE_URL}/accept-user/${user._id}/${house.code}/${ownId}`;
+          const transporter = nodemailer.createTransport({
+            service: "gmail",
+            auth: {
+              user: process.env.APP_EMAIL as string,
+              pass: process.env.APP_PASSWORD as string,
+            },
+          })
+          const mailOptions = {
+            from:{
+              name: "House Expense Manager",
+              address: process.env.APP_EMAIL as string
+            },
+            to: email,
+            subject: "Join House",
+            html: `
+            <!DOCTYPE html>
+        <html>
+          <head>
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                background-color: #f3f3f3;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container" style="background-color: #ffffff; border-radius: 5px; padding: 20px; margin: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.1;">
+              <img src="${process.env.LOGO_URL}" alt="House Ex Manager" class="logo" style="width: 100px; height: 100px;" />
+              <h2 style="color: #333;">
+               A New User wants to join your house <b>${house?.description}</b> 
+              </h2>
+              <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Hello ${
+                name
+              },</p>
+              <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">A new user wants to join your house ${
+                house?.description
+              }. Click the button below to accept the user.</p>
+
+              <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;"> Email: ${
+                user.email
+              }</p>
+              <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;"> Username: ${
+                user.username
+              }</p>
+              <a href="${emailLink}" class="button" style="display: inline-block; color: #ffffff; padding: 12px 20px; text-align: center; text-decoration: none; border-radius: 4px; margin-top: 20px; background-color: #7C3AED;">Accept the User</a>
+              <p class="text" style="color: #333; font-size: 10px; margin-top: 20px;"><i>If you do not know the person just ignore this email</i></p>
+
+              <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Best regards,</p>
+              <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Your House Expense Manager Team</p>
+            </div>
+          </body>
+        </html>
+            `,
+          };
+          transporter.sendMail(mailOptions, function (error:any, info:any) {
+            if (error) {
+              console.log(error);
+            } else {
+              console.log("Email sent: " + info.response);
+            }
+          });
         }
-        res.status(200).json({ message: "Joined house successfully" });
+        house.users.forEach(async (id) => {
+          const userToEmail = await User.findById(id);
+          if(userToEmail){
+            sendEmail(userToEmail.email, userToEmail.name!, userToEmail._id!);
+          }
+        }
+        )
+        res.status(200).json({ message: "Email sent to house members" });
+        
+
       } else {
         res.status(400).json({ message: "User is already in the house" });
       }
@@ -249,6 +318,96 @@ export const joinHouse = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+export const acceptUser = async (req: Request, res: Response) => {
+  const { id, houseCode, ownId } = req.params
+  const userAccepting = await User.findById(ownId)
+  const user = await User.findById(id);
+  const house = await House.findOne({ code: houseCode })
+
+  if (!house) {
+    return res.status(404).json({ message: "House not found" })
+  }
+
+  if (user) {
+    if(!user.houseCodes.includes(houseCode)){
+    user.houseCodes.push(houseCode) 
+    await user.save()
+    if (!house.users.includes(user._id)) {
+      house.users.push(user._id) // Add the user to the house's users array
+      // add user name to house's userNames array
+      house.userNames.push(user.username)
+      await house.save()
+    }
+    const sendEmail = (email: string, name: string) => {
+      const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: process.env.APP_EMAIL as string,
+          pass: process.env.APP_PASSWORD as string,
+        },
+      })
+      const mailOptions = {
+        from: {
+          name: "House Expense Manager",
+          address: process.env.APP_EMAIL as string,
+        },
+        to: email,
+        subject: "Join House",
+        html: `
+            <!DOCTYPE html>
+        <html>
+          <head>
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                background-color: #f3f3f3;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container" style="background-color: #ffffff; border-radius: 5px; padding: 20px; margin: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.1;">
+              <img src="${
+                process.env.LOGO_URL
+              }" alt="House Ex Manager" class="logo" style="width: 100px; height: 100px;" />
+              <h2 style="color: #333;">
+               You are now a member of the house => <b>${
+                 house?.description
+               }</b> 
+              </h2>
+              <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Hello ${name},</p>
+              <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">
+              ${
+                userAccepting && userAccepting.username
+              } has accepted your request to join  ${house?.description}.</p>
+
+              <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Best regards,</p>
+              <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Your House Expense Manager Team</p>
+            </div>
+          </body>
+        </html>
+            `,
+      }
+      transporter.sendMail(mailOptions, function (error: any, info: any) {
+        if (error) {
+          console.log(error)
+        } else {
+          console.log("Email sent: " + info.response)
+        }
+      })
+    }
+
+    sendEmail(user.email, user.name!)
+    res.status(200).json({ message: "Joined house successfully" })
+  } else {
+    res.status(400).json({ message: "User is already in the house" })
+  }
+  } else {
+    res.status(401).json({
+      message: "User Not Found",
+    })
+  }
+}
 
 export const getAllHouses = async (req: Request, res: Response) => {
   try {

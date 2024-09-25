@@ -3,6 +3,7 @@ import multer from "multer"
 import { CloudinaryStorage } from "multer-storage-cloudinary"
 import { v2 as cloudinary } from "cloudinary"
 import {
+  acceptUser,
   createHouse,
   deleteHouse,
   getAllHouses,
@@ -80,6 +81,9 @@ router.delete("/:id", isHouseMember, deleteHouse)
 
 // join a house
 router.post("/join-house", upload.none(), authMiddleware, joinHouse)
+
+// accept an user to a house
+ router.post("/accept-user/:id/:houseCode/:ownId", acceptUser)
 
 // Leave a house
 router.post("/leave-house", leaveHouse)
