@@ -45,7 +45,7 @@ const storage = new CloudinaryStorage({
     return {
       folder: "receipts",
       format: "jpg", // Automatically convert to jpg
-      public_id: Date.now() + "-" + req.body.description,
+      public_id: "receipt"+ "-" + Date.now(),
       transformation: [
         { width: 800, height: 600, crop: "limit" }, // Resize with a limit
         { quality: "auto" }, // Automatic quality adjustment
