@@ -35,7 +35,18 @@ router.get(
 );
 
 router.get(
+  "/user/expenses/half-yearly/:houseCode/:month/:year",
+  checkHouseOwnership,
+  getLast6MonthsExpensesByHouse
+);
+
+router.get(
   "/house/expenses/half-yearly/:houseCode",
+  checkHouseOwnership,
+  getLast6MonthsExpensesOfHouse
+);
+router.get(
+  "/house/expenses/half-yearly/:houseCode/:month/:year",
   checkHouseOwnership,
   getLast6MonthsExpensesOfHouse
 );
@@ -44,6 +55,13 @@ router.get(
   checkHouseOwnership,
   getCurrentMonthExpensesByHouseMembers
 );
+
+router.get(
+  "/house/expenses/contributions/:houseCode/:month/:year",
+  checkHouseOwnership,
+  getCurrentMonthExpensesByHouseMembers
+);
+
 router.get(
   "/user/expenses/comparison/:houseCode",
   checkHouseOwnership,
@@ -51,7 +69,19 @@ router.get(
 );
 
 router.get(
+  "/user/expenses/comparison/:houseCode/:month/:year",
+  checkHouseOwnership,
+  getCurrentMonthExpenseComparison
+);
+
+router.get(
   "/expenses/category/:houseCode",
+  checkHouseOwnership,
+  getCurrentMonthExpensesByCategory
+);
+
+router.get(
+  "/expenses/category/:houseCode/:month/:year",
   checkHouseOwnership,
   getCurrentMonthExpensesByCategory
 );

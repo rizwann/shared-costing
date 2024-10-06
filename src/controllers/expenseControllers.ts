@@ -83,7 +83,6 @@ export const createExpense = async (req: Request, res: Response) => {
         }
       );
       
-    console.log("involvedUsersEmails", involvedUsersWithEmails)
     // send email to the involved users
     const FE_URL = process.env.FRONTEND_URL as string;
    const emailLink = `${FE_URL}/expenses/${savedExpense._id}`
@@ -132,7 +131,7 @@ export const createExpense = async (req: Request, res: Response) => {
               <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Cost: ${cost}</p>
               <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Description: ${description}</p>
               <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Store: ${storeName}</p>
-              <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Date: ${date}</p>
+              <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Date: ${savedExpense.date}</p>
               <a href="${emailLink}" class="button" style="display: inline-block; color: #ffffff; padding: 12px 20px; text-align: center; text-decoration: none; border-radius: 4px; margin-top: 20px; background-color: #7C3AED;">Go to the expense</a>
               <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">You can check the expense in the app.</p>
 
