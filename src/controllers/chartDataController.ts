@@ -523,7 +523,8 @@ export const getCurrentMonthExpensesByCategory = async (
     // Get the first day of the selected/current month
     const firstDayOfMonth = new Date(currentYear, currentMonth, 1)
 
-    const currentMonthExpenses = await Expense.find({ houseCode, userId }) // Filter by houseCode and userId
+    // const currentMonthExpenses = await Expense.find({ houseCode, userId }) // Filter by houseCode and userId
+      const currentMonthExpenses = await Expense.find({ houseCode }) 
       .select("category cost")
       .sort({ category: 1 })
       .gte("date", firstDayOfMonth) // Filter from the first day of the selected month
