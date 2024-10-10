@@ -249,8 +249,6 @@ export const getLast6MonthsExpensesOfHouse = async (
     const { userId } = req.body
 
     const today = new Date()
-    console.log("month year", month, year)
-
     // Determine the current month and year based on params or current date
     const currentMonth = month ? parseInt(month) - 1 : today.getMonth() // months are 0-indexed in JavaScript
     const currentYear = year ? parseInt(year) : today.getFullYear()
@@ -314,12 +312,6 @@ export const getLast6MonthsExpensesOfHouse = async (
       month: Number(entry[0]),
       totalExpense: entry[1],
     }))
-
-    console.log("expenses", expenses)
-    console.log(
-      "last element from allExpenses",
-      allExpenses[allExpenses.length - 1]
-    )
 
     const finalResult = monthsOfTheYear.map((month, idX) => {
       const entry = result.find((exp) => exp.month === idX)
