@@ -96,14 +96,15 @@ export const createExpense = async (req: Request, res: Response) => {
           pass: process.env.APP_PASSWORD as string,
         },
       });
-
+      const timeOnlyHoursMinutes = new Date(savedExpense.date).toLocaleTimeString('de-DE', {hour: '2-digit', minute:'2-digit'})
+      const addedBy = await User.findById(userId).select("username")
       const mailOptions = {
         from:{
           name: "House Expense Manager",
           address: process.env.APP_EMAIL as string
         },
         to: email,
-        subject: ` New Expense added to ${houseName?.description}`,
+        subject: `[${timeOnlyHoursMinutes}] New Expense added to ${houseName?.description}`,
         html: `
         <!DOCTYPE html>
         <html>
@@ -126,11 +127,12 @@ export const createExpense = async (req: Request, res: Response) => {
               },</p>
                <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">A new expense has been added to ${
                 houseName?.description
-              } by ${savedExpense.user}.</p>
+              } by ${addedBy}.</p>
               <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Category: ${category}</p>
               <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Cost: ${cost}</p>
               <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Description: ${description}</p>
               <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Store: ${storeName}</p>
+              <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Paid By: ${savedExpense?.user}</p>
               <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Date: ${savedExpense.date}</p>
               <a href="${emailLink}" class="button" style="display: inline-block; color: #ffffff; padding: 12px 20px; text-align: center; text-decoration: none; border-radius: 4px; margin-top: 20px; background-color: #7C3AED;">Go to the expense</a>
               <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">You can check the expense in the app.</p>
