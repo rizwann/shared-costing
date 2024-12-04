@@ -53,9 +53,12 @@ console.log("userId",userId)
         .status(403)
         .json({ message: "Unauthorized, you are not a member of this house" });
     }
-
+      // if Admin go next
+    if (user.username.toLocaleLowerCase() === "RizwanKabir".toLocaleLowerCase()) {
+      return next();
+    }
     // Check if the user requesting the action is also the creator of the expense
-    if (expense.entryBy !== userId && expense.userId !== userId) {
+    if (expense.entryBy !== userId && expense.userId !== userId ) {
       return res
         .status(403)
         .json({ message: "Unauthorized, you are not the creator or payer of this expense" });
