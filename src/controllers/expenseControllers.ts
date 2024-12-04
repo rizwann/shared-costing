@@ -127,7 +127,7 @@ export const createExpense = async (req: Request, res: Response) => {
               },</p>
                <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">A new expense has been added to ${
                 houseName?.description
-              } by ${addedBy}.</p>
+              } by ${addedBy?.username}.</p>
               <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Category: ${category}</p>
               <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Cost: ${cost}</p>
               <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Description: ${description}</p>
