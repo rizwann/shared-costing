@@ -670,7 +670,7 @@ export const calculateHouseExpensesAndDebts = async (
     const currentYear = date.getFullYear();
 
     // check which expenses have the date property
-    const expenses =
+    let expenses =
       month && year
         ? allExpenses.filter(
             (expense) =>
@@ -682,6 +682,25 @@ export const calculateHouseExpensesAndDebts = async (
               expense.date.getMonth() === currentMonth &&
               expense.date.getFullYear() === currentYear
           );
+          //for all months of the year
+          console.log("hedavoda", month, year, !month && year, typeof month, !!month)
+    if (month ==='all' && year !== 'all') {
+      expenses = allExpenses.filter(
+        (expense) => expense.date.getFullYear() === Number(year)
+      );
+    }
+
+    if (month ==='all' && year === 'all') {
+      expenses = allExpenses;
+    }
+    if ( month !== 'all' && year === 'all') {
+      expenses = allExpenses.filter(
+        (expense) => expense.date.getMonth() === Number(month) - 1
+      );
+    }
+          console.log("hedavoda1", expenses, allExpenses)
+
+
           function calculateBalances(expenses: IExpense[]): Record<string, number> {
             const balances: Record<string, number> = {};
         
