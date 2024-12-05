@@ -1,9 +1,9 @@
-import { Request, Response } from "express";
-import Expense from "../models/Expense";
-import Store from "../models/Store";
-import { IUser, User } from "../models/User";
-import { Expense as IExpense } from "../../types";
-import House from "../models/House";
+import { Request, Response } from "express"
+import Expense from "../models/Expense"
+import Store from "../models/Store"
+import { IUser, User } from "../models/User"
+import { Expense as IExpense } from "../../types"
+import House from "../models/House"
 
 // Create a new expense
 export const createExpense = async (req: Request, res: Response) => {
@@ -17,19 +17,22 @@ export const createExpense = async (req: Request, res: Response) => {
       userId,
       paymentPerson,
       involvedUsers,
-    } = req.body;
-    const receipt = req.file ? req.file.path : undefined;
+    } = req.body
+    const receipt = req.file ? req.file.path : undefined
     console.log("receipt", receipt)
     const userForPayment = paymentPerson ? paymentPerson : userId
-    const userHouses = await User.findById(userForPayment).select("houseCodes");
-    const user = await User.findById(userForPayment);
+    const userHouses = await User.findById(userForPayment).select("houseCodes")
+    const user = await User.findById(userForPayment)
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "User not found" })
     }
     if (!userHouses?.houseCodes.includes(houseCode)) {
       return res
         .status(403)
-        .json({ message: "Unauthorized, the paying person is not a member of this house!" });
+        .json({
+          message:
+            "Unauthorized, the paying person is not a member of this house!",
+        })
     }
 
     // const foundStore = await Store.findById(storeId);
@@ -38,22 +41,20 @@ export const createExpense = async (req: Request, res: Response) => {
     // }
 
     // check if the involved users are members of the house
-    const users = await User.find({ houseCodes: houseCode });
-    const usernames = users.map((user) => user.username);
+    const users = await User.find({ houseCodes: houseCode })
+    const usernames = users.map((user) => user.username)
 
-    const involvedUsersNames = involvedUsers
-      ? [...involvedUsers]
-      : usernames;
+    const involvedUsersNames = involvedUsers ? [...involvedUsers] : usernames
 
     const isInvolvedUsersInHouse = involvedUsersNames.every((user) =>
       usernames.includes(user)
-    );
+    )
     if (!isInvolvedUsersInHouse) {
       return res
         .status(403)
-        .json({ message: "Unauthorized, involved users are not in the house" });
+        .json({ message: "Unauthorized, involved users are not in the house" })
     }
-    const date = new Date();
+    const date = new Date()
     // to Germany local time
     const houseName = await House.findOne({ code: houseCode })
     const newExpense = new Expense({
@@ -69,39 +70,40 @@ export const createExpense = async (req: Request, res: Response) => {
       receipt: receipt ? receipt : undefined,
       involvedUsers: [...new Set(involvedUsersNames)],
       entryBy: userId,
-    });
-    const savedExpense = await newExpense.save();
+    })
+    const savedExpense = await newExpense.save()
 
     //send email to the involved users about the expense
-    const involvedUsersWithEmails = users 
+    const involvedUsersWithEmails = users
       .filter((user) => involvedUsersNames.includes(user.username))
       .map((user) => {
         return {
           email: user.email,
           name: user.name,
-        };
         }
-      );
-      
-    // send email to the involved users
-    const FE_URL = process.env.FRONTEND_URL as string;
-   const emailLink = `${FE_URL}/expenses/${savedExpense._id}`
+      })
 
-   const sendEmail = async (email: string, name : string) => {
-      const nodemailer = require("nodemailer");
+    // send email to the involved users
+    const FE_URL = process.env.FRONTEND_URL as string
+    const emailLink = `${FE_URL}/expenses/${savedExpense._id}`
+
+    const sendEmail = async (email: string, name: string) => {
+      const nodemailer = require("nodemailer")
       const transporter = nodemailer.createTransport({
         service: "gmail",
         auth: {
           user: process.env.APP_EMAIL as string,
           pass: process.env.APP_PASSWORD as string,
         },
-      });
-      const timeOnlyHoursMinutes = new Date(savedExpense.date).toLocaleTimeString('de-DE', {hour: '2-digit', minute:'2-digit'})
+      })
+      const timeOnlyHoursMinutes = new Date(
+        savedExpense.date
+      ).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })
       const addedBy = await User.findById(userId).select("username")
       const mailOptions = {
-        from:{
+        from: {
           name: "House Expense Manager",
-          address: process.env.APP_EMAIL as string
+          address: process.env.APP_EMAIL as string,
         },
         to: email,
         subject: `[${timeOnlyHoursMinutes}] New Expense added to ${houseName?.description}`,
@@ -122,12 +124,8 @@ export const createExpense = async (req: Request, res: Response) => {
               <h2 style="color: #333;">
                A New Expense has been added to ${houseName?.description}
               </h2>
-              <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Hello ${
-                name
-              },</p>
-               <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">A new expense has been added to ${
-                houseName?.description
-              } by ${addedBy?.username}.</p>
+              <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Hello ${name},</p>
+               <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">A new expense has been added to ${houseName?.description} by ${addedBy?.username}.</p>
               <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Category: ${category}</p>
               <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Cost: ${cost}</p>
               <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Description: ${description}</p>
@@ -143,78 +141,77 @@ export const createExpense = async (req: Request, res: Response) => {
           </body>
         </html>
         `,
-      };
+      }
 
       transporter.sendMail(mailOptions, (error: any, info: any) => {
         if (error) {
-          console.log(error);
+          console.log(error)
         } else {
-          console.log("Email sent: " + info.response);
+          console.log("Email sent: " + info.response)
         }
-      });
+      })
     }
- involvedUsers
- involvedUsersWithEmails.forEach((user) => {
-      sendEmail(user.email, user.name!);
-    });
+    involvedUsers
+    involvedUsersWithEmails.forEach((user) => {
+      sendEmail(user.email, user.name!)
+    })
 
-    res.status(201).json(savedExpense);
+    res.status(201).json(savedExpense)
   } catch (error: any) {
     if (error.name === "ValidationError") {
-      return res.status(400).json({ message: error.message });
+      return res.status(400).json({ message: error.message })
     }
     if (error.name === "CastError") {
       return res
         .status(400)
-        .json({ message: `Invalid ${error.path}: ${error.value}` });
+        .json({ message: `Invalid ${error.path}: ${error.value}` })
     }
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error" })
   }
-};
+}
 
 // Get all expenses
 export const getAllExpenses = async (req: Request, res: Response) => {
   try {
-    const expenses = await Expense.find();
-    res.status(200).json(expenses);
+    const expenses = await Expense.find()
+    res.status(200).json(expenses)
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
+    console.error(error)
+    res.status(500).json({ message: "Server error" })
   }
-};
+}
 
 // Get a single expense by ID
 export const getExpenseById = async (req: Request, res: Response) => {
   try {
-    const { expenseId } = req.params;
-    const expense = await Expense.findById(expenseId);
+    const { expenseId } = req.params
+    const expense = await Expense.findById(expenseId)
 
     if (!expense) {
-      return res.status(404).json({ message: "Expense not found" });
+      return res.status(404).json({ message: "Expense not found" })
     }
 
-    res.status(200).json(expense);
+    res.status(200).json(expense)
   } catch (error: any) {
     if (error.name === "ValidationError") {
-      return res.status(400).json({ message: error.message });
+      return res.status(400).json({ message: error.message })
     }
     if (error.name === "CastError") {
       return res
         .status(400)
-        .json({ message: `Invalid ${error.path}: ${error.value}` });
+        .json({ message: `Invalid ${error.path}: ${error.value}` })
     }
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error" })
   }
-};
+}
 
 // Update an expense by ID
 export const updateExpense = async (req: Request, res: Response) => {
   try {
-    const { expenseId } = req.params;
-    const { cost, category, description, involvedUsers, storeName } = req.body;
-    const receipt = req.file ? req.file.path : undefined;
-   
-   
+    const { expenseId } = req.params
+    const { cost, category, description, involvedUsers, storeName } = req.body
+    const receipt = req.file ? req.file.path : undefined
+
     // if (storeId) {
     //   const foundStore = await Store.findById(storeId);
     //   if (!foundStore) {
@@ -222,11 +219,11 @@ export const updateExpense = async (req: Request, res: Response) => {
     //   }
     console.log("receipt", receipt)
 
-      const updatedExpense = await Expense.findByIdAndUpdate(
-        expenseId,
-        { cost, category, description, involvedUsers, storeName, receipt },
-        { new: true }
-      );
+    const updatedExpense = await Expense.findByIdAndUpdate(
+      expenseId,
+      { cost, category, description, involvedUsers, storeName, receipt },
+      { new: true }
+    )
     // } else {
     //    updatedExpense = await Expense.findByIdAndUpdate(
     //     expenseId,
@@ -234,65 +231,64 @@ export const updateExpense = async (req: Request, res: Response) => {
     //     { new: true }
     //   );
     // }
-    
 
     if (!updatedExpense) {
-      return res.status(404).json({ message: "Expense not found" });
+      return res.status(404).json({ message: "Expense not found" })
     }
 
-    res.status(200).json(updatedExpense);
+    res.status(200).json(updatedExpense)
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
+    console.error(error)
+    res.status(500).json({ message: "Server error" })
   }
-};
+}
 
 // Delete an expense by ID
 export const deleteExpense = async (req: Request, res: Response) => {
   try {
-    const { expenseId } = req.params;
+    const { expenseId } = req.params
 
-    const expense = await Expense.findByIdAndRemove(expenseId);
+    const expense = await Expense.findByIdAndRemove(expenseId)
 
     if (!expense) {
-      return res.status(404).json({ message: "Expense not found" });
+      return res.status(404).json({ message: "Expense not found" })
     }
 
-    res.status(204).send();
+    res.status(204).send()
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
+    console.error(error)
+    res.status(500).json({ message: "Server error" })
   }
-};
+}
 
 // get all expenses by user, only accessible by that user
 export const getAllExpensesByUser = async (req: Request, res: Response) => {
   try {
-    const { userId } = req.params;
-    const currentUserId = req.body.userId;
+    const { userId } = req.params
+    const currentUserId = req.body.userId
 
     if (userId !== currentUserId.toString())
       return res
         .status(403)
-        .json({ message: "Unauthorized, you only can access your expenses!" });
-    const expenses = await Expense.find({ userId: userId });
+        .json({ message: "Unauthorized, you only can access your expenses!" })
+    const expenses = await Expense.find({ userId: userId })
 
     if (!expenses) {
-      return res.status(404).json({ message: "Expenses not found" });
+      return res.status(404).json({ message: "Expenses not found" })
     }
 
     if (expenses.length === 0) {
       return res
         .status(200)
-        .json({ message: "No expenses found for this user" });
+        .json({ message: "No expenses found for this user" })
     }
 
-    res.status(200).json(expenses);
+    res.status(200).json(expenses)
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
+    console.error(error)
+    res.status(500).json({ message: "Server error" })
   }
-};
+}
 
 // get all expenses by user in a specific house, only accessible by that user
 
@@ -301,30 +297,30 @@ export const getAllExpensesByUserInHouse = async (
   res: Response
 ) => {
   try {
-    const { userId, houseCode } = req.params;
+    const { userId, houseCode } = req.params
 
-    const { last } = req.query;
+    const { last } = req.query
 
     const expenses = await Expense.find({ user: userId, houseCode })
       .sort({ date: -1 })
-      .limit(last ? Number(last) : 0);
+      .limit(last ? Number(last) : 0)
 
     if (!expenses) {
-      return res.status(404).json({ message: "Expenses not found" });
+      return res.status(404).json({ message: "Expenses not found" })
     }
 
     if (expenses.length === 0) {
       return res
         .status(200)
-        .json({ message: "No expenses found for this user" });
+        .json({ message: "No expenses found for this user" })
     }
 
-    res.status(200).json({ count: expenses.length, expenses });
+    res.status(200).json({ count: expenses.length, expenses })
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
+    console.error(error)
+    res.status(500).json({ message: "Server error" })
   }
-};
+}
 
 //get all expenses by house
 
@@ -335,34 +331,34 @@ export const getExpensesOfCurrentMonthByUserInHouse = async (
   res: Response
 ) => {
   try {
-    const { userId, houseCode } = req.params;
-    const expenses = await Expense.find({ user: userId, houseCode: houseCode });
+    const { userId, houseCode } = req.params
+    const expenses = await Expense.find({ user: userId, houseCode: houseCode })
 
     if (!expenses) {
-      return res.status(404).json({ message: "Expenses not found" });
+      return res.status(404).json({ message: "Expenses not found" })
     }
 
     if (expenses.length === 0) {
       return res
         .status(200)
-        .json({ message: "No expenses found for this user" });
+        .json({ message: "No expenses found for this user" })
     }
 
-    const date = new Date();
-    const currentMonth = date.getMonth();
-    const currentYear = date.getFullYear();
+    const date = new Date()
+    const currentMonth = date.getMonth()
+    const currentYear = date.getFullYear()
     const expensesOfCurrentMonth = expenses.filter(
       (expense) =>
         expense.date.getMonth() === currentMonth &&
         expense.date.getFullYear() === currentYear
-    );
+    )
 
-    res.status(200).json(expensesOfCurrentMonth);
+    res.status(200).json(expensesOfCurrentMonth)
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
+    console.error(error)
+    res.status(500).json({ message: "Server error" })
   }
-};
+}
 
 //get expense of current week by the user in a specific house
 export const getExpensesOfCurrentWeekByUserInHouse = async (
@@ -370,93 +366,94 @@ export const getExpensesOfCurrentWeekByUserInHouse = async (
   res: Response
 ) => {
   try {
-    const { userId, houseCode } = req.params;
-    const expenses = await Expense.find({ user: userId, houseCode: houseCode });
+    const { userId, houseCode } = req.params
+    const expenses = await Expense.find({ user: userId, houseCode: houseCode })
 
     if (!expenses) {
-      return res.status(404).json({ message: "Expenses not found" });
+      return res.status(404).json({ message: "Expenses not found" })
     }
 
     if (expenses.length === 0) {
       return res
         .status(200)
-        .json({ message: "No expenses found for this user" });
+        .json({ message: "No expenses found for this user" })
     }
 
-    const currentDate = new Date();
-    const currentWeekStartDate = new Date(currentDate);
-    currentWeekStartDate.setHours(0, 0, 0, 0);
+    const currentDate = new Date()
+    const currentWeekStartDate = new Date(currentDate)
+    currentWeekStartDate.setHours(0, 0, 0, 0)
     currentWeekStartDate.setDate(
       currentWeekStartDate.getDate() - currentDate.getDay()
-    ); // Set to the start of the week (Sunday).
+    ) // Set to the start of the week (Sunday).
 
-    const currentWeekEndDate = new Date(currentWeekStartDate);
-    currentWeekEndDate.setDate(currentWeekEndDate.getDate() + 7); // End of the week (next Sunday).
+    const currentWeekEndDate = new Date(currentWeekStartDate)
+    currentWeekEndDate.setDate(currentWeekEndDate.getDate() + 7) // End of the week (next Sunday).
 
     const expensesOfCurrentWeek = expenses.filter(
       (expense) =>
         expense.date >= currentWeekStartDate &&
         expense.date < currentWeekEndDate
-    );
+    )
 
-    res.status(200).json(expensesOfCurrentWeek);
+    res.status(200).json(expensesOfCurrentWeek)
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
+    console.error(error)
+    res.status(500).json({ message: "Server error" })
   }
-};
+}
 
 // get expense of current month by house
 export const getExpensesOfHouse = async (req: Request, res: Response) => {
   try {
-    const { houseCode } = req.params;
-    const { currentMonth, lastMonth } = req.query;
-    const expenses = await Expense.find({ houseCode: houseCode })
-      .sort({ date: -1 });
+    const { houseCode } = req.params
+    const { currentMonth, lastMonth } = req.query
+    const expenses = await Expense.find({ houseCode: houseCode }).sort({
+      date: -1,
+    })
 
     if (expenses.length === 0) {
       return res
         .status(404)
-        .json({ message: "No expenses found for this user" });
+        .json({ message: "No expenses found for this user" })
     }
 
     const totalExpenses = Number(
       expenses.reduce((total, expense) => total + expense.cost, 0).toFixed(2)
-    );
+    )
 
-    const date = new Date();
-    const thisMonth = date.getMonth();
-    const currentYear = date.getFullYear();
-    let prevMonth = date.getMonth() - 1;
-    let prevYear = date.getFullYear();
+    const date = new Date()
+    const thisMonth = date.getMonth()
+    const currentYear = date.getFullYear()
+    let prevMonth = date.getMonth() - 1
+    let prevYear = date.getFullYear()
     if (prevMonth < 0) {
-      prevYear -= 1;
-      prevMonth = 11; // December
+      prevYear -= 1
+      prevMonth = 11 // December
     }
 
     const expensesOfthisMonth = expenses.filter(
       (expense) =>
         expense.date.getMonth() === thisMonth &&
         expense.date.getFullYear() === currentYear
-    );
+    )
 
     const totalExpensesThisMonth = Number(
       expensesOfthisMonth
         .reduce((total, expense) => total + expense.cost, 0)
         .toFixed(2)
-    );
+    )
 
     const expensesOfLastMonth = expenses.filter(
       (expense) =>
         expense.date.getMonth() === prevMonth &&
         expense.date.getFullYear() === prevYear
-    );
+    )
 
     const totalExpensesLastMonth = Number(
       expensesOfLastMonth
         .reduce((total, expense) => total + expense.cost, 0)
         .toFixed(2)
-    );
+    )
 
     res.status(200).json(
       currentMonth === "true"
@@ -469,13 +466,13 @@ export const getExpensesOfHouse = async (req: Request, res: Response) => {
             totalExpenses: totalExpensesLastMonth,
             expenses: expensesOfLastMonth,
           }
-        : expenses 
-    );
+        : expenses
+    )
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
+    console.error(error)
+    res.status(500).json({ message: "Server error" })
   }
-};
+}
 
 // get expense of current year by the user in a specific house
 
@@ -484,35 +481,35 @@ export const getExpensesOfCurrentYearByUserInHouse = async (
   res: Response
 ) => {
   try {
-    const { userId, houseCode } = req.params;
-    const expenses = await Expense.find({ user: userId, houseCode: houseCode });
+    const { userId, houseCode } = req.params
+    const expenses = await Expense.find({ user: userId, houseCode: houseCode })
 
     if (!expenses) {
-      return res.status(404).json({ message: "Expenses not found" });
+      return res.status(404).json({ message: "Expenses not found" })
     }
 
     if (expenses.length === 0) {
       return res
         .status(200)
-        .json({ message: "No expenses found for this user" });
+        .json({ message: "No expenses found for this user" })
     }
 
-    const date = new Date();
-    const currentYear = date.getFullYear();
+    const date = new Date()
+    const currentYear = date.getFullYear()
     // check which expenses has date property
     // Todo: remove this after adding date property to all expenses
-    const expensesWithDateProp = expenses.filter((expense) => expense.date);
+    const expensesWithDateProp = expenses.filter((expense) => expense.date)
 
     const expensesOfCurrentYear = expensesWithDateProp.filter(
       (expense) => expense.date.getFullYear() === currentYear
-    );
+    )
 
-    res.status(200).json(expensesOfCurrentYear);
+    res.status(200).json(expensesOfCurrentYear)
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
+    console.error(error)
+    res.status(500).json({ message: "Server error" })
   }
-};
+}
 
 // get expense of a specific year by the user in a specific house
 export const getExpensesOfSpecificYearByUserInHouse = async (
@@ -520,65 +517,65 @@ export const getExpensesOfSpecificYearByUserInHouse = async (
   res: Response
 ) => {
   try {
-    const { userId, houseCode, year } = req.params;
-    const expenses = await Expense.find({ user: userId, houseCode: houseCode });
+    const { userId, houseCode, year } = req.params
+    const expenses = await Expense.find({ user: userId, houseCode: houseCode })
 
     if (!expenses) {
-      return res.status(404).json({ message: "Expenses not found" });
+      return res.status(404).json({ message: "Expenses not found" })
     }
 
     if (expenses.length === 0) {
       return res
         .status(200)
-        .json({ message: "No expenses found for this user" });
+        .json({ message: "No expenses found for this user" })
     }
     // check which expenses has date property
     // Todo: remove this after adding date property to all expenses
-    const expensesWithDateProp = expenses.filter((expense) => expense.date);
+    const expensesWithDateProp = expenses.filter((expense) => expense.date)
     const expensesOfSpecificYear = expensesWithDateProp.filter(
       (expense) => expense.date.getFullYear() === Number(year)
-    );
+    )
 
-    res.status(200).json(expensesOfSpecificYear);
+    res.status(200).json(expensesOfSpecificYear)
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
+    console.error(error)
+    res.status(500).json({ message: "Server error" })
   }
-};
+}
 // get expense of a specific year in a specific house
 export const getExpensesOfSpecificHouseByYear = async (
   req: Request,
   res: Response
 ) => {
   try {
-    const { houseCode, year } = req.params;
-    const expenses = await Expense.find({ houseCode: houseCode });
+    const { houseCode, year } = req.params
+    const expenses = await Expense.find({ houseCode: houseCode })
 
     if (!expenses) {
-      return res.status(404).json({ message: "Expenses not found" });
+      return res.status(404).json({ message: "Expenses not found" })
     }
 
     if (expenses.length === 0) {
       return res
         .status(200)
-        .json({ message: "No expenses found for this user" });
+        .json({ message: "No expenses found for this user" })
     }
     // check which expenses has date property
     // Todo: remove this after adding date property to all expenses
-    const expensesWithDateProp = expenses.filter((expense) => expense.date);
+    const expensesWithDateProp = expenses.filter((expense) => expense.date)
     const expensesOfSpecificYear = expensesWithDateProp.filter(
       (expense) => expense.date.getFullYear() === Number(year)
-    );
+    )
     if (expensesOfSpecificYear.length === 0) {
-      return res.status(200).json({ message: "No expenses found for " + year });
+      return res.status(200).json({ message: "No expenses found for " + year })
     }
 
-    res.status(200).json(expensesOfSpecificYear);
+    res.status(200).json(expensesOfSpecificYear)
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
+    console.error(error)
+    res.status(500).json({ message: "Server error" })
   }
-};
+}
 
 // get expenses of a specific month and year by the user in a specific house
 
@@ -587,33 +584,33 @@ export const getExpensesOfSpecificMonthAndYearByUserInHouse = async (
   res: Response
 ) => {
   try {
-    const { userId, houseCode, month, year } = req.params;
-    const expenses = await Expense.find({ user: userId, houseCode: houseCode });
+    const { userId, houseCode, month, year } = req.params
+    const expenses = await Expense.find({ user: userId, houseCode: houseCode })
 
     if (!expenses) {
-      return res.status(404).json({ message: "Expenses not found" });
+      return res.status(404).json({ message: "Expenses not found" })
     }
 
     if (expenses.length === 0) {
       return res
         .status(200)
-        .json({ message: "No expenses found for this user" });
+        .json({ message: "No expenses found for this user" })
     }
     // check which expenses has date property
     // Todo: remove this after adding date property to all expenses
-    const expensesWithDateProp = expenses.filter((expense) => expense.date);
+    const expensesWithDateProp = expenses.filter((expense) => expense.date)
     const expensesOfSpecificMonthAndYear = expensesWithDateProp.filter(
       (expense) =>
         expense.date.getFullYear() === Number(year) &&
         expense.date.getMonth() === Number(month) - 1
-    );
+    )
 
-    res.status(200).json(expensesOfSpecificMonthAndYear);
+    res.status(200).json(expensesOfSpecificMonthAndYear)
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
+    console.error(error)
+    res.status(500).json({ message: "Server error" })
   }
-};
+}
 
 //get expenses of a specific month and year in a specific house
 
@@ -622,52 +619,52 @@ export const getExpensesOfSpecificMonthAndYearByHouse = async (
   res: Response
 ) => {
   try {
-    const { houseCode, month, year } = req.params;
-    const expenses = await Expense.find({ houseCode: houseCode });
+    const { houseCode, month, year } = req.params
+    const expenses = await Expense.find({ houseCode: houseCode })
 
     if (!expenses) {
-      return res.status(404).json({ message: "Expenses not found" });
+      return res.status(404).json({ message: "Expenses not found" })
     }
 
     if (expenses.length === 0) {
       return res
         .status(200)
-        .json({ message: "No expenses found for this user" });
+        .json({ message: "No expenses found for this user" })
     }
     // check which expenses has date property
     // Todo: remove this after adding date property to all expenses
-    const expensesWithDateProp = expenses.filter((expense) => expense.date);
+    const expensesWithDateProp = expenses.filter((expense) => expense.date)
     const expensesOfSpecificMonthAndYear = expensesWithDateProp.filter(
       (expense) =>
         expense.date.getFullYear() === Number(year) &&
         expense.date.getMonth() === Number(month) - 1
-    );
+    )
 
     if (expensesOfSpecificMonthAndYear.length === 0) {
       return res
         .status(200)
-        .json({ message: "No expenses found for this month and year" });
+        .json({ message: "No expenses found for this month and year" })
     }
 
-    res.status(200).json(expensesOfSpecificMonthAndYear);
+    res.status(200).json(expensesOfSpecificMonthAndYear)
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
+    console.error(error)
+    res.status(500).json({ message: "Server error" })
   }
-};
+}
 
 export const calculateHouseExpensesAndDebts = async (
   req: Request,
   res: Response
 ) => {
   try {
-    const { houseCode, month, year } = req.params;
+    const { houseCode, month, year } = req.params
 
     // Find all expenses for the given house
-    const allExpenses = await Expense.find({ houseCode });
-    const date = new Date();
-    const currentMonth = date.getMonth();
-    const currentYear = date.getFullYear();
+    const allExpenses = await Expense.find({ houseCode })
+    const date = new Date()
+    const currentMonth = date.getMonth()
+    const currentYear = date.getFullYear()
 
     // check which expenses have the date property
     let expenses =
@@ -681,100 +678,109 @@ export const calculateHouseExpensesAndDebts = async (
             (expense) =>
               expense.date.getMonth() === currentMonth &&
               expense.date.getFullYear() === currentYear
-          );
-          //for all months of the year
-          console.log("hedavoda", month, year, !month && year, typeof month, !!month)
-    if (month ==='all' && year !== 'all') {
+          )
+    //for all months of the year
+    if (month === "all" && year !== "all") {
       expenses = allExpenses.filter(
         (expense) => expense.date.getFullYear() === Number(year)
-      );
+      )
     }
 
-    if (month ==='all' && year === 'all') {
-      expenses = allExpenses;
+    if (month === "all" && year === "all") {
+      expenses = allExpenses
     }
-    if ( month !== 'all' && year === 'all') {
+    if (month !== "all" && year === "all") {
       expenses = allExpenses.filter(
         (expense) => expense.date.getMonth() === Number(month) - 1
-      );
+      )
     }
-          console.log("hedavoda1", expenses, allExpenses)
+    function calculateBalances(expenses: IExpense[]): Record<string, number> {
+      const balances: Record<string, number> = {}
 
+      expenses.forEach(({ user, cost, involvedUsers }) => {
+        const share = cost / involvedUsers.length
 
-          function calculateBalances(expenses: IExpense[]): Record<string, number> {
-            const balances: Record<string, number> = {};
-        
-            expenses.forEach(({ user, cost, involvedUsers }) => {
-                const share = cost / involvedUsers.length;
-        
-                balances[user] = (balances[user] || 0) + cost;
-                involvedUsers.forEach(person => {
-                    balances[person] = (balances[person] || 0) - share;
-                });
-            });
-        
-            return balances;
-        }
+        balances[user] = (balances[user] || 0) + cost
+        involvedUsers.forEach((person) => {
+          balances[person] = (balances[person] || 0) - share
+        })
+      })
 
-        function calculateTotalExpenseByUser(expenses: IExpense[]): Record<string, number> {
-            const totalExpenseByUser: Record<string, number> = {};
-        
-            expenses.forEach(({ user, cost }) => {
-                totalExpenseByUser[user] = (totalExpenseByUser[user] || 0) + cost;
-            });
-        
-            return totalExpenseByUser;
-        }
+      return balances
+    }
 
-        type Transaction = { from: string; to: string; amount: number };
+    function calculateTotalExpenseByUser(
+      expenses: IExpense[]
+    ): Record<string, number> {
+      const totalExpenseByUser: Record<string, number> = {}
 
-        function minimizeTransactions(balances: Record<string, number>): Transaction[] {
-          const debts: Transaction[] = [];
-      
-          const creditors = Object.entries(balances).filter(([, balance]) => balance > 0);
-          const debtors = Object.entries(balances).filter(([, balance]) => balance < 0);
-      
-          let i = 0, j = 0;
-      
-          while (i < creditors.length && j < debtors.length) {
-              const [creditor, credit] = creditors[i];
-              const [debtor, debt] = debtors[j];
-              const amount = Math.min(credit, -debt);
-      
-              debts.push({ from: debtor, to: creditor, amount });
-      
-              creditors[i][1] -= amount;
-              debtors[j][1] += amount;
-      
-              if (creditors[i][1] === 0) i++;
-              if (debtors[j][1] === 0) j++;
-          }
-      
-          return debts;
+      expenses.forEach(({ user, cost }) => {
+        totalExpenseByUser[user] = (totalExpenseByUser[user] || 0) + cost
+      })
+
+      return totalExpenseByUser
+    }
+
+    type Transaction = { from: string; to: string; amount: number }
+
+    function minimizeTransactions(
+      balances: Record<string, number>
+    ): Transaction[] {
+      const debts: Transaction[] = []
+
+      const creditors = Object.entries(balances).filter(
+        ([, balance]) => balance > 0
+      )
+      const debtors = Object.entries(balances).filter(
+        ([, balance]) => balance < 0
+      )
+
+      let i = 0,
+        j = 0
+
+      while (i < creditors.length && j < debtors.length) {
+        const [creditor, credit] = creditors[i]
+        const [debtor, debt] = debtors[j]
+        const amount = Math.min(credit, -debt)
+
+        debts.push({ from: debtor, to: creditor, amount })
+
+        creditors[i][1] -= amount
+        debtors[j][1] += amount
+
+        if (creditors[i][1] === 0) i++
+        if (debtors[j][1] === 0) j++
       }
 
-        const balances = calculateBalances(expenses.map(expense => expense.toObject()))
-        const totalExpenseByUser = calculateTotalExpenseByUser(expenses.map(expense => expense.toObject()))
-        const transactions = minimizeTransactions(balances)
+      return debts
+    }
+
+    const balances = calculateBalances(
+      expenses.map((expense) => expense.toObject())
+    )
+    const totalExpenseByUser = calculateTotalExpenseByUser(
+      expenses.map((expense) => expense.toObject())
+    )
+    const transactions = minimizeTransactions(balances)
 
     const calculateNetChange = (
       expenses: typeof allExpenses,
       person: string
     ): number => {
-      let cashInflow = 0;
-      let cashOutflow = 0;
+      let cashInflow = 0
+      let cashOutflow = 0
 
       expenses.forEach((expense) => {
         if (expense.user === person) {
-          const average = expense.cost / expense.involvedUsers.length;
-          cashOutflow += expense.cost - average;
+          const average = expense.cost / expense.involvedUsers.length
+          cashOutflow += expense.cost - average
         } else if (expense.involvedUsers.includes(person)) {
-          cashInflow += expense.cost / expense.involvedUsers.length;
+          cashInflow += expense.cost / expense.involvedUsers.length
         }
-      });
+      })
 
-      return Number((cashInflow - cashOutflow).toFixed(2));
-    };
+      return Number((cashInflow - cashOutflow).toFixed(2))
+    }
 
     const calculateNetChangeForAll = (
       expenses: typeof allExpenses
@@ -782,88 +788,88 @@ export const calculateHouseExpensesAndDebts = async (
       const persons: string[] = Array.from(
         new Set(
           expenses.reduce<string[]>((acc, expense) => {
-            acc.push(expense.user, ...expense.involvedUsers);
-            return acc;
+            acc.push(expense.user, ...expense.involvedUsers)
+            return acc
           }, [])
         )
-      );
-      const netChanges: Record<string, number> = {};
+      )
+      const netChanges: Record<string, number> = {}
 
       persons.forEach((person) => {
-        const netChange = calculateNetChange(expenses, person);
-        netChanges[person] = netChange;
-      });
+        const netChange = calculateNetChange(expenses, person)
+        netChanges[person] = netChange
+      })
 
-      return netChanges;
-    };
+      return netChanges
+    }
 
     const netChanges: Record<string, number> =
-      calculateNetChangeForAll(expenses);
+      calculateNetChangeForAll(expenses)
 
     // Categorize into Givers and Receivers
     const givers: string[] = Object.keys(netChanges).filter(
       (person) => netChanges[person] > 0
-    );
+    )
     const receivers: string[] = Object.keys(netChanges).filter(
       (person) => netChanges[person] < 0
-    );
+    )
 
     interface PaymentInstruction {
-      from: string;
-      to: string;
-      amount: number;
+      from: string
+      to: string
+      amount: number
     }
 
     const settlePaymentsOptimized = (
       givers: string[],
       receivers: string[]
     ): PaymentInstruction[] => {
-      let payments: PaymentInstruction[] = [];
+      let payments: PaymentInstruction[] = []
 
-      givers.sort((a, b) => netChanges[b] - netChanges[a]);
-      receivers.sort((a, b) => netChanges[a] - netChanges[b]);
+      givers.sort((a, b) => netChanges[b] - netChanges[a])
+      receivers.sort((a, b) => netChanges[a] - netChanges[b])
 
-      let i = 0;
-      let j = 0;
+      let i = 0
+      let j = 0
       while (i < givers.length && j < receivers.length) {
-        const giver = givers[i];
-        const receiver = receivers[j];
+        const giver = givers[i]
+        const receiver = receivers[j]
 
-        const giverAmount = netChanges[giver];
-        const receiverAmount = Math.abs(netChanges[receiver]);
+        const giverAmount = netChanges[giver]
+        const receiverAmount = Math.abs(netChanges[receiver])
 
         if (giverAmount > receiverAmount) {
           payments.push({
             from: giver,
             to: receiver,
             amount: receiverAmount,
-          });
-          netChanges[giver] -= receiverAmount;
-          j++;
+          })
+          netChanges[giver] -= receiverAmount
+          j++
         } else if (giverAmount < receiverAmount) {
           payments.push({
             from: giver,
             to: receiver,
             amount: giverAmount,
-          });
-          netChanges[receiver] += giverAmount;
-          i++;
+          })
+          netChanges[receiver] += giverAmount
+          i++
         } else {
           payments.push({
             from: giver,
             to: receiver,
             amount: giverAmount,
-          });
-          i++;
-          j++;
+          })
+          i++
+          j++
         }
       }
 
-      return payments;
-    };
+      return payments
+    }
 
     const paymentInstructionsOptimized: PaymentInstruction[] =
-      settlePaymentsOptimized(givers, receivers);
+      settlePaymentsOptimized(givers, receivers)
 
     // Prepare and send the response
 
@@ -875,11 +881,11 @@ export const calculateHouseExpensesAndDebts = async (
       balances,
       totalExpenseByUser,
       transactions,
-    };
+    }
 
-    res.status(200).json(response);
+    res.status(200).json(response)
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
+    console.error(error)
+    res.status(500).json({ message: "Server error" })
   }
-};
+}
