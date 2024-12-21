@@ -664,7 +664,6 @@ export const getLast6MonthsExpensesByCategory = async (
       .gte("date", sixMonthsAgo)
       .lte("date", today)
       .exec()
-
     if (!allExpenses.length) {
       return res.status(404).json({ message: "No expenses found" })
     }
@@ -700,6 +699,7 @@ export const getLast6MonthsExpensesByCategory = async (
       "Sep",
       "Oct",
       "Nov",
+      "Dec",
     ]
 
     const result = Object.entries(expenses).map((entry: any) => ({
@@ -731,10 +731,26 @@ export const getLast6MonthsExpensesByCategory = async (
       return {
         name: monthName,
         ...expensesObj,
-        ...expenses,
+        ...expenses,  
       }
     })
-    res.status(200).json(response)
+       
+const catComparison = Object.values(CategoryName).map((category) => {
+  const catExpenses = response.map((month) => {
+    return {
+      month: month.name,
+      expenses: month[category]
+    }
+  }
+  )
+  return {
+    name: category,
+    expenses: catExpenses
+  }
+}
+)
+ 
+    res.status(200).json({response, finalResult, last6Months, catComparison})
   } catch (error) {
     console.error(error)
     res.status(500).json({ message: "Server error" })

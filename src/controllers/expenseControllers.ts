@@ -209,19 +209,32 @@ export const getExpenseById = async (req: Request, res: Response) => {
 export const updateExpense = async (req: Request, res: Response) => {
   try {
     const { expenseId } = req.params
-    const { cost, category, description, involvedUsers, storeName } = req.body
+    const { cost, category, description, involvedUsers, storeName, houseCode } = req.body
     const receipt = req.file ? req.file.path : undefined
+    let houseName
 
     // if (storeId) {
     //   const foundStore = await Store.findById(storeId);
     //   if (!foundStore) {
     //     return res.status(404).json({ message: "Store not found" });
     //   }
-    console.log("receipt", receipt)
-
+   if (houseCode) {
+      houseName = await House.findOne({ code: houseCode }).select("description")
+      const users = await User.find({ houseCodes: houseCode })
+      const usernames = users.map((user) => user.username)
+      const involvedUsersNames = involvedUsers ? [...involvedUsers] : usernames
+      const isInvolvedUsersInHouse = involvedUsersNames.every((user) =>
+        usernames.includes(user)
+      )
+      if (!isInvolvedUsersInHouse) {
+        return res
+          .status(403)
+          .json({ message: "Unauthorized, involved users are not in the house" })
+      }
+   }
     const updatedExpense = await Expense.findByIdAndUpdate(
       expenseId,
-      { cost, category, description, involvedUsers, storeName, receipt },
+      { cost, category, description, involvedUsers, storeName, receipt, houseCode, houseName: houseName?.description   },
       { new: true }
     )
     // } else {
