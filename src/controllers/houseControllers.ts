@@ -8,7 +8,7 @@ const nodemailer = require("nodemailer")
 
 export const createHouse = async (req: Request, res: Response) => {
   try {
-    const { code, description, userId } = req.body;
+    const { code, description, userId, timeZone, currency } = req.body;
     const image = req.file ? req.file.path : undefined;
 
     // Check for duplicate code or description
@@ -30,7 +30,9 @@ export const createHouse = async (req: Request, res: Response) => {
       description,
       image,
       users: [userId],
-      userNames: [userNames[0].username], 
+      userNames: [userNames[0].username],
+      timeZone,
+      currency,
     }); // Add user ID to the users array
     await house.save();
     // add house code to user's houseCodes array
@@ -129,7 +131,7 @@ export const getUserByHouseCode = async (req: Request, res: Response) => {
 export const updateHouse = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { description, code } = req.body;
+    const { description, code, currency, timeZone } = req.body;
     const image = req.file ? req.file.path : undefined;
 
     const house = await House.findById(id);
@@ -177,6 +179,8 @@ export const updateHouse = async (req: Request, res: Response) => {
 
       house.code = code;
     }
+    house.currency = currency;
+    house.timeZone = timeZone;
 
     await house.save();
 

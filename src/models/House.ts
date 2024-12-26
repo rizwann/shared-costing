@@ -7,6 +7,8 @@ export interface IHouse extends Document {
   image: string;
   users: string[]; // Array of user ids
   userNames: string[]; // Array of user names
+  timeZone: string;
+  currency: string;
 }
 
 const HouseSchema: Schema = new Schema({
@@ -30,6 +32,14 @@ const HouseSchema: Schema = new Schema({
     //array of user names
     type: [String],
     default: [],
+  },
+  timeZone: {
+    type: String,
+    default: "Europe/Berlin",
+  },
+  currency: {
+    type: String,
+    default: "EUR",
   },
 });
 

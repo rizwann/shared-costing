@@ -55,7 +55,10 @@ export const createExpense = async (req: Request, res: Response) => {
         .json({ message: "Unauthorized, involved users are not in the house" })
     }
     const date = new Date()
-    // to Germany local time
+    const house = await House.findOne({ code: houseCode })
+    const houseTimezone = house?.timeZone
+    const customDate = new Date( new Date().toLocaleString("en-US", { timeZone: houseTimezone }) )
+    
     const houseName = await House.findOne({ code: houseCode })
     const newExpense = new Expense({
       user: user.username,
@@ -65,7 +68,7 @@ export const createExpense = async (req: Request, res: Response) => {
       description,
       houseCode,
       houseName: houseName?.description,
-      date: req.body.date ? new Date(req.body.date) : date,
+      date: req.body.date ? new Date(req.body.date) : customDate,
       storeName,
       receipt: receipt ? receipt : undefined,
       involvedUsers: [...new Set(involvedUsersNames)],
@@ -131,7 +134,11 @@ export const createExpense = async (req: Request, res: Response) => {
               <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Description: ${description}</p>
               <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Store: ${storeName}</p>
               <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Paid By: ${savedExpense?.user}</p>
-              <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Date: ${savedExpense.date}</p>
+              <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Date: ${
+                new Date(savedExpense.date).toLocaleString("de-DE", {
+                  timeZone: houseTimezone,
+                })
+              }</p>
               <a href="${emailLink}" class="button" style="display: inline-block; color: #ffffff; padding: 12px 20px; text-align: center; text-decoration: none; border-radius: 4px; margin-top: 20px; background-color: #7C3AED;">Go to the expense</a>
               <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">You can check the expense in the app.</p>
 
