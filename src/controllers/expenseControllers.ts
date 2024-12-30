@@ -54,10 +54,9 @@ export const createExpense = async (req: Request, res: Response) => {
         .status(403)
         .json({ message: "Unauthorized, involved users are not in the house" })
     }
-    const date = new Date()
     const house = await House.findOne({ code: houseCode })
     const houseTimezone = house?.timeZone
-    const customDate = new Date( new Date().toLocaleString("en-US", { timeZone: houseTimezone }) )
+    const currentTime = new Date()
     
     const houseName = await House.findOne({ code: houseCode })
     const newExpense = new Expense({
@@ -68,7 +67,7 @@ export const createExpense = async (req: Request, res: Response) => {
       description,
       houseCode,
       houseName: houseName?.description,
-      date: req.body.date ? new Date(req.body.date) : customDate,
+      date: req.body.date ? new Date(req.body.date) : currentTime,
       storeName,
       receipt: receipt ? receipt : undefined,
       involvedUsers: [...new Set(involvedUsersNames)],
@@ -99,9 +98,7 @@ export const createExpense = async (req: Request, res: Response) => {
           pass: process.env.APP_PASSWORD as string,
         },
       })
-      const timeOnlyHoursMinutes = new Date(
-        savedExpense.date
-      ).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })
+      const timeOnlyHoursMinutes = new Date(savedExpense.date).toLocaleString("de-DE", { timeZone: houseTimezone, hour: "2-digit", minute: "2-digit" })
       const addedBy = await User.findById(userId).select("username")
       const mailOptions = {
         from: {
