@@ -701,7 +701,6 @@ export const getLast6MonthsExpensesByCategory = async (
       "Nov",
       "Dec",
     ]
-
     const result = Object.entries(expenses).map((entry: any) => ({
       month: Number(entry[0]),
       expenses: entry[1],
@@ -714,11 +713,15 @@ export const getLast6MonthsExpensesByCategory = async (
         expenses: entry ? entry.expenses : {},
       }
     })
+    const last6MonthsIndices: number[] = []
+    for (let i = 0; i < 6; i++) {
+        const monthIndex = (sixMonthsAgo.getMonth() + i) % 12;
+        last6MonthsIndices.push(monthIndex);
+    }
 
-    const last6Months = finalResult.slice(
-      sixMonthsAgo.getMonth(),
-      today.getMonth() + 1
-    )
+    const last6Months = last6MonthsIndices.map((monthIndex) => {
+        return finalResult[monthIndex]
+    })
 
     const response = last6Months.map((month) => {
       const monthName = month.name
