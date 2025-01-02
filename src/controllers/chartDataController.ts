@@ -199,10 +199,15 @@ export const getLast6MonthsExpensesByHouse = async (
     })
 
     // Extract the last 6 months' expenses based on the current month
-    const last6Months = finalResult.slice(
-      sixMonthsAgo.getMonth(),
-      currentMonth + 1
-    )
+    const last6MonthsIndices: number[] = []
+    for (let i = 0; i < 6; i++) {
+        const monthIndex = (sixMonthsAgo.getMonth() + i) % 12;
+        last6MonthsIndices.push(monthIndex);
+    }
+
+    const last6Months = last6MonthsIndices.map((monthIndex) => {
+        return finalResult[monthIndex]
+    })
 
     // Calculate the total expenses for the current month and the average of the last 5 months
     const currentMonthExpenses = last6Months[last6Months.length - 1].expenses
@@ -321,10 +326,15 @@ export const getLast6MonthsExpensesOfHouse = async (
       }
     })
 
-    const last6Months = finalResult.slice(
-      sixMonthsAgo.getMonth(),
-      currentMonth + 1
-    )
+    const last6MonthsIndices: number[] = []
+    for (let i = 0; i < 6; i++) {
+        const monthIndex = (sixMonthsAgo.getMonth() + i) % 12;
+        last6MonthsIndices.push(monthIndex);
+    }
+
+    const last6Months = last6MonthsIndices.map((monthIndex) => {
+        return finalResult[monthIndex]
+    })
 
     // Find the percentage... compare the last 5 months average with the current month
     const currentMonthExpenses = Number(
@@ -381,41 +391,37 @@ export const getCurrentMonthExpensesByHouseMembers = async (
     const endOfMonth = new Date(
       Date.UTC(currentYear, currentMonth + 1, 0, 23, 59, 59, 999)
     )
-
-    // Aggregate expenses for the given houseCode and within the month range
-    const expenses = await Expense.aggregate([
-      {
-        $match: {
-          houseCode,
-          date: {
-            $gte: startOfMonth,
-            $lte: endOfMonth,
-          },
-        },
-      },
-      {
-        $group: {
-          _id: "$userId",
-          expenses: { $sum: "$cost" },
-        },
-      },
-    ])
+   
+    const allExpenses = await Expense.find({ houseCode: houseCode }).sort({
+      date: -1,
+    })
+    if (!allExpenses.length) {
+      return res.status(404).json({ message: "No expenses found" })
+    }
+    const expensesOfthisMonth = allExpenses.filter(
+      (expense) =>
+        expense.date.getMonth() === currentMonth &&
+        expense.date.getFullYear() === currentYear
+    )
+    const expenses = expensesOfthisMonth.reduce((acc: any, curr: any) => {
+      if (acc[curr.user]) {
+        acc[curr.user] += curr.cost
+      } else {
+        acc[curr.user] = curr.cost
+      }
+      return acc
+    } , {})
 
     // Fetch users belonging to the houseCode
     const users = await User.find({ houseCodes: houseCode })
-
-    // Map users to their expenses
     const result = users.map((user) => {
-      const entry = expenses.find(
-        (exp) => exp._id.toString() === user._id.toString()
-      )
+      const entry = expenses[user.username]
       return {
         name: user.username,
-        expenses: entry ? Number(entry.expenses).toFixed(2) : 0,
+        expenses: entry ? Number(entry).toFixed(2) : 0,
         firstName: user.name ? user.name.split(" ")[0] : user.name,
       }
     })
-
     res.status(200).json(result)
   } catch (error) {
     console.error(error)

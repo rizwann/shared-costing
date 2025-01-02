@@ -19,7 +19,6 @@ export const createExpense = async (req: Request, res: Response) => {
       involvedUsers,
     } = req.body
     const receipt = req.file ? req.file.path : undefined
-    console.log("receipt", receipt)
     const userForPayment = paymentPerson ? paymentPerson : userId
     const userHouses = await User.findById(userForPayment).select("houseCodes")
     const user = await User.findById(userForPayment)
