@@ -2,6 +2,8 @@ import { Request, Response } from "express"
 import Expense, { CategoryName } from "../models/Expense"
 import { User } from "../models/User"
 import Store from "../models/Store"
+import House from "../models/House"
+import { convertToISO8601 } from "../utils"
 
 // Get house expenses by store
 
@@ -445,6 +447,8 @@ export const getCurrentMonthExpenseComparison = async (
     }
 
     const date = new Date()
+    const house = await House.findOne({ code: houseCode })
+    const timeZone = house?.timeZone
 
     // Check if `month` and `year` are provided in params, otherwise default to the current date
     const currentMonth = month ? parseInt(month) - 1 : date.getMonth()
@@ -458,8 +462,23 @@ export const getCurrentMonthExpenseComparison = async (
       prevMonth = 11 // December of the previous year
     }
 
-    // Filter expenses for the current month and year
-    const expensesOfthisMonth = expenses.filter(
+    // Filter expenses for the current month and year (keep in mind about the timezone)
+    const modiFiedExpenses = expenses.map((expense: any) => {
+      let date = new Date(expense.date)
+      // change the date to the current timezone
+      const localDate = convertToISO8601(expense.date, timeZone)
+      console.log("date", expense.storeName , expense.date, localDate)
+      
+      return {
+        ...expense._doc,
+        date: new Date(localDate),
+    }
+  })
+//last 5 
+    console.log("modiFiedExpenses",
+    modiFiedExpenses.slice(-5) )
+      
+    const expensesOfthisMonth = modiFiedExpenses.filter(
       (expense) =>
         expense.date.getMonth() === currentMonth &&
         expense.date.getFullYear() === currentYear
@@ -472,12 +491,12 @@ export const getCurrentMonthExpenseComparison = async (
     )
 
     // Filter expenses for the previous month and year
-    const expensesOfLastMonth = expenses.filter(
+    const expensesOfLastMonth = modiFiedExpenses.filter(
       (expense) =>
         expense.date.getMonth() === prevMonth &&
         expense.date.getFullYear() === prevYear
     )
-console.log("currentMonth", currentMonth, "currentYear", currentYear, "prevMonth", prevMonth, "prevYear", prevYear,  "expensesOfthisMonth", expensesOfthisMonth)
+
     const totalExpensesLastMonth = Number(
       expensesOfLastMonth
         .reduce((total, expense) => total + expense.cost, 0)
