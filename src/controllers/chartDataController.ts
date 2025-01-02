@@ -544,12 +544,30 @@ export const getCurrentMonthExpensesByCategory = async (
     const firstDayOfMonth = new Date(currentYear, currentMonth, 1)
 
     // const currentMonthExpenses = await Expense.find({ houseCode, userId }) // Filter by houseCode and userId
-      const currentMonthExpenses = await Expense.find({ houseCode }) 
-      .select("category cost")
-      .sort({ category: 1 })
-      .gte("date", firstDayOfMonth) // Filter from the first day of the selected month
-      .lte("date", new Date(currentYear, currentMonth + 1, 0)) // End of the selected month
-      .exec()
+      // const currentMonthExpenses = await Expense.find({ houseCode }) 
+      // .select("category cost")
+      // .sort({ category: 1 })
+      // .gte("date", firstDayOfMonth) // Filter from the first day of the selected month
+      // .lte("date", new Date(currentYear, currentMonth + 1, 0)) // End of the selected month
+      // .exec()
+    const allLocalExpenses = await Expense.find({ houseCode })
+    const house = await House.findOne({ code: houseCode })
+    const timeZone = house?.timeZone
+    
+    const allExpenses = allLocalExpenses.map((expense: any) => { 
+      const localDate = convertToISO8601(expense.date, timeZone)
+      return {
+        ...expense._doc,
+        date: new Date(localDate),
+      }
+    }
+    )
+    const currentMonthExpenses = allExpenses.filter(
+      (expense: any) =>
+        expense.date.getMonth() === currentMonth &&
+        expense.date.getFullYear() === currentYear
+    )
+
 
     if (currentMonthExpenses.length === 0) {
       return res
