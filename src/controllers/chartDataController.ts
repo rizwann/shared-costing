@@ -265,15 +265,7 @@ export const getLast6MonthsExpensesOfHouse = async (
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5) // Set to six months ago
 
     const endOfMonth = new Date(currentYear, currentMonth + 1, 0)
-    endOfMonth.setHours(23, 59, 59, 999) // Set to the last millisecond of the day
-
-    // const allExpenses = await Expense.find({ houseCode })
-    //   .select("cost date")
-    //   .sort({ date: 1 })
-    //   .gte("date", sixMonthsAgo)
-    //   .lte("date", endOfMonth) // Use endOfMonth to include the full last day
-    //   .exec()
-
+    endOfMonth.setHours(23, 59, 59, 999) 
     const allLocalExpenses = await Expense.find({ houseCode })
     const house = await House.findOne({ code: houseCode })
     const timeZone = house?.timeZone
@@ -412,7 +404,20 @@ export const getCurrentMonthExpensesByHouseMembers = async (
     if (!allExpenses.length) {
       return res.status(404).json({ message: "No expenses found" })
     }
-    const expensesOfthisMonth = allExpenses.filter(
+
+    const house = await House.findOne({ code: houseCode })
+    const timeZone = house?.timeZone
+
+    const allExpensesModified = allExpenses.map((expense: any) => {
+      const localDate = convertToISO8601(expense.date, timeZone)
+      return {
+        ...expense._doc,
+        date: new Date(localDate),
+      }
+    }
+    )
+
+    const expensesOfthisMonth = allExpensesModified.filter(
       (expense) =>
         expense.date.getMonth() === currentMonth &&
         expense.date.getFullYear() === currentYear

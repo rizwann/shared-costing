@@ -4,6 +4,7 @@ import Store from "../models/Store"
 import { IUser, User } from "../models/User"
 import { Expense as IExpense } from "../../types"
 import House from "../models/House"
+import { convertToISO8601 } from "../utils"
 
 // Create a new expense
 export const createExpense = async (req: Request, res: Response) => {
@@ -677,11 +678,23 @@ export const calculateHouseExpensesAndDebts = async (
     const { houseCode, month, year } = req.params
 
     // Find all expenses for the given house
-    const allExpenses = await Expense.find({ houseCode })
+    const allExpensesFromDB = await Expense.find({ houseCode })
     const date = new Date()
     const currentMonth = date.getMonth()
     const currentYear = date.getFullYear()
 
+    const house = await House.findOne({ code: houseCode })
+    if (!house) {
+      return res.status(404).json({ message: "House not found" })
+    }
+
+    const timeZone = house.timeZone
+
+    const allExpenses = allExpensesFromDB.map((expense: any) => {
+      const localDate = convertToISO8601(expense.date, timeZone)
+      return { ...expense._doc, date: new Date(localDate), lewra: "voda" }
+    }
+    )
     // check which expenses have the date property
     let expenses =
       month && year
@@ -771,12 +784,8 @@ export const calculateHouseExpensesAndDebts = async (
       return debts
     }
 
-    const balances = calculateBalances(
-      expenses.map((expense) => expense.toObject())
-    )
-    const totalExpenseByUser = calculateTotalExpenseByUser(
-      expenses.map((expense) => expense.toObject())
-    )
+    const balances = calculateBalances(expenses)
+    const totalExpenseByUser = calculateTotalExpenseByUser(expenses)
     const transactions = minimizeTransactions(balances)
 
     const calculateNetChange = (
