@@ -264,22 +264,34 @@ export const getLast6MonthsExpensesOfHouse = async (
     const sixMonthsAgo = new Date(currentYear, currentMonth, 1)
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5) // Set to six months ago
 
+    const endOfMonth = new Date(currentYear, currentMonth + 1, 0)
+    endOfMonth.setHours(23, 59, 59, 999) // Set to the last millisecond of the day
+
     // const allExpenses = await Expense.find({ houseCode })
     //   .select("cost date")
     //   .sort({ date: 1 })
     //   .gte("date", sixMonthsAgo)
-    //   .lte("date", new Date(currentYear, currentMonth + 1, 0)) // end of the current month
-    //   .exec();
-    // Ensure the end date includes the full day of the last day of the month
-    const endOfMonth = new Date(currentYear, currentMonth + 1, 0)
-    endOfMonth.setHours(23, 59, 59, 999) // Set to the last millisecond of the day
+    //   .lte("date", endOfMonth) // Use endOfMonth to include the full last day
+    //   .exec()
 
-    const allExpenses = await Expense.find({ houseCode })
-      .select("cost date")
-      .sort({ date: 1 })
-      .gte("date", sixMonthsAgo)
-      .lte("date", endOfMonth) // Use endOfMonth to include the full last day
-      .exec()
+    const allLocalExpenses = await Expense.find({ houseCode })
+    const house = await House.findOne({ code: houseCode })
+    const timeZone = house?.timeZone
+
+    const allExpensesModified = allLocalExpenses.map((expense: any) => {
+      const localDate = convertToISO8601(expense.date, timeZone)
+      return {
+        ...expense._doc,
+        date: new Date(localDate),
+      }
+    }
+    )
+
+    const allExpenses = allExpensesModified.filter(
+      (expense: any) =>
+        expense.date >= sixMonthsAgo && expense.date <= endOfMonth
+    )
+    
 
     if (!allExpenses.length) {
       return res.status(404).json({ message: "No expenses found" })
@@ -461,23 +473,14 @@ export const getCurrentMonthExpenseComparison = async (
       prevYear -= 1
       prevMonth = 11 // December of the previous year
     }
-
-    // Filter expenses for the current month and year (keep in mind about the timezone)
+    
     const modiFiedExpenses = expenses.map((expense: any) => {
-      let date = new Date(expense.date)
-      // change the date to the current timezone
       const localDate = convertToISO8601(expense.date, timeZone)
-      console.log("date", expense.storeName , expense.date, localDate)
-      
       return {
         ...expense._doc,
         date: new Date(localDate),
     }
   })
-//last 5 
-    console.log("modiFiedExpenses",
-    modiFiedExpenses.slice(-5) )
-      
     const expensesOfthisMonth = modiFiedExpenses.filter(
       (expense) =>
         expense.date.getMonth() === currentMonth &&
