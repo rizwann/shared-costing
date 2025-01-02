@@ -145,18 +145,34 @@ export const getLast6MonthsExpensesByHouse = async (
 
     // Fetch expenses within the last 6 months for the given house and user
     const allExpenses = await Expense.find({ userId, houseCode })
-      .select("cost date")
-      .sort({ date: 1 })
-      .gte("date", sixMonthsAgo)
-      .lte("date", new Date(currentYear, currentMonth + 1, 0)) // Include all expenses till the end of current month
-      .exec()
+      // .select("cost date")
+      // .sort({ date: 1 })
+      // .gte("date", sixMonthsAgo)
+      // .lte("date", new Date(currentYear, currentMonth + 1, 0)) // Include all expenses till the end of current month
+      // .exec()
 
     if (!allExpenses.length) {
       return res.status(404).json({ message: "No expenses found" })
     }
 
+    const house = await House.findOne({ code : houseCode })
+    if (!house) {
+      return res.status(404).json({ message: "House not found" })
+    }
+    const timeZone = house.timeZone
+
+    const allExpensesModified = allExpenses.map((expense: any) => {
+      const localDate = convertToISO8601(expense.date, timeZone)
+      return {
+        ...expense._doc,
+        date: new Date(localDate),
+      }
+    }
+    )
+
+
     // Map and reduce expenses by month
-    const expenses = allExpenses
+    const expenses = allExpensesModified
       .map((entry: any) => ({
         month: entry.date.getMonth(),
         totalExpense: entry.cost,
@@ -699,27 +715,65 @@ export const getCurrentMonthExpensesByStore = async (
 
 export const getLast6MonthsExpensesByCategory = async (
   req: Request,
-  res: Response
+  res: Response,
 ) => {
   try {
-    const { houseCode } = req.params
+    const { houseCode, month, year } = req.params
     const { userId } = req.body
     const today = new Date()
-    const sixMonthsAgo = new Date(today)
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5)
-    sixMonthsAgo.setDate(1)
+    // const sixMonthsAgo = new Date(today)
+    // sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5)
+    // sixMonthsAgo.setDate(1)
 
+    // const allExpenses = await Expense.find({ houseCode })
+    //   .select("cost date category")
+    //   .sort({ date: 1 })
+    //   .gte("date", sixMonthsAgo)
+    //   .lte("date", today)
+    //   .exec()
+    // if (!allExpenses.length) {
+    //   return res.status(404).json({ message: "No expenses found" })
+    // }
+    const currentMonth = month ? parseInt(month) - 1 : today.getMonth() // months are 0-indexed
+    const currentYear = year ? parseInt(year) : today.getFullYear()
+
+    // Set the start date to six months ago
+    const sixMonthsAgo = new Date(currentYear, currentMonth, 1)
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5) // move six months back
+
+    // Fetch expenses within the last 6 months for the given house and user
     const allExpenses = await Expense.find({ houseCode })
-      .select("cost date category")
-      .sort({ date: 1 })
-      .gte("date", sixMonthsAgo)
-      .lte("date", today)
-      .exec()
+      // .select("cost date")
+      // .sort({ date: 1 })
+      // .gte("date", sixMonthsAgo)
+      // .lte("date", new Date(currentYear, currentMonth + 1, 0)) // Include all expenses till the end of current month
+      // .exec()
+
     if (!allExpenses.length) {
       return res.status(404).json({ message: "No expenses found" })
     }
 
-    const expenses = allExpenses
+    const house = await House.findOne({ code : houseCode })
+    if (!house) {
+      return res.status(404).json({ message: "House not found" })
+    }
+    const timeZone = house.timeZone
+
+    const allExpensesModified = allExpenses.map((expense: any) => {
+      const localDate = convertToISO8601(expense.date, timeZone)
+      return {
+        ...expense._doc,
+        date: new Date(localDate),
+      }
+    }
+    )
+
+    const allExpensesLast6Months = allExpensesModified.filter(
+      (expense: any) =>
+        expense.date >= sixMonthsAgo && expense.date <= today
+    )
+
+    const expenses = allExpensesLast6Months
       .map((entry: any) => ({
         month: entry.date.getMonth(),
         category: entry.category,

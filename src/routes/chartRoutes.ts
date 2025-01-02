@@ -98,4 +98,10 @@ router.get(
   getLast6MonthsExpensesByCategory
 );
 
+router.get(
+  "/expenses/category/half-yearly/:houseCode/:month/:year",
+  checkHouseOwnership,
+  getLast6MonthsExpensesByCategory
+);
+
 export default router;
