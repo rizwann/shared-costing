@@ -477,7 +477,7 @@ export const getCurrentMonthExpenseComparison = async (
         expense.date.getMonth() === prevMonth &&
         expense.date.getFullYear() === prevYear
     )
-
+console.log("currentMonth", currentMonth, "currentYear", currentYear, "prevMonth", prevMonth, "prevYear", prevYear,  "expensesOfthisMonth", expensesOfthisMonth)
     const totalExpensesLastMonth = Number(
       expensesOfLastMonth
         .reduce((total, expense) => total + expense.cost, 0)
