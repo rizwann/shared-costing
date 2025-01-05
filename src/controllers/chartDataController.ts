@@ -3,7 +3,7 @@ import Expense, { CategoryName } from "../models/Expense"
 import { User } from "../models/User"
 import Store from "../models/Store"
 import House from "../models/House"
-import { convertToISO8601 } from "../utils"
+import { monthsOfTheYear } from "../utils"
 
 // Get house expenses by store
 
@@ -145,34 +145,13 @@ export const getLast6MonthsExpensesByHouse = async (
 
     // Fetch expenses within the last 6 months for the given house and user
     const allExpenses = await Expense.find({ userId, houseCode })
-      // .select("cost date")
-      // .sort({ date: 1 })
-      // .gte("date", sixMonthsAgo)
-      // .lte("date", new Date(currentYear, currentMonth + 1, 0)) // Include all expenses till the end of current month
-      // .exec()
 
     if (!allExpenses.length) {
       return res.status(404).json({ message: "No expenses found" })
     }
 
-    const house = await House.findOne({ code : houseCode })
-    if (!house) {
-      return res.status(404).json({ message: "House not found" })
-    }
-    const timeZone = house.timeZone
-
-    const allExpensesModified = allExpenses.map((expense: any) => {
-      const localDate = convertToISO8601(expense.date, timeZone)
-      return {
-        ...expense._doc,
-        date: new Date(localDate),
-      }
-    }
-    )
-
-
     // Map and reduce expenses by month
-    const expenses = allExpensesModified
+    const expenses = allExpenses
       .map((entry: any) => ({
         month: entry.date.getMonth(),
         totalExpense: entry.cost,
@@ -186,23 +165,7 @@ export const getLast6MonthsExpensesByHouse = async (
         return acc
       }, {})
 
-    // Define month names
-    const monthsOfTheYear = [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
-    ]
-
-    // Create a result array with the months and their respective expenses
+  // Create a result array with the months and their respective expenses
     const result = Object.entries(expenses).map((entry: any) => ({
       month: Number(entry[0]),
       totalExpense: entry[1],
@@ -269,11 +232,9 @@ export const getLast6MonthsExpensesOfHouse = async (
 ) => {
   try {
     const { houseCode, month, year } = req.params
-    const { userId } = req.body
-
     const today = new Date()
     // Determine the current month and year based on params or current date
-    const currentMonth = month ? parseInt(month) - 1 : today.getMonth() // months are 0-indexed in JavaScript
+    const currentMonth = month ? parseInt(month) - 1 : today.getMonth()
     const currentYear = year ? parseInt(year) : today.getFullYear()
 
     // Calculate the date six months ago from the provided/current month and year
@@ -283,23 +244,11 @@ export const getLast6MonthsExpensesOfHouse = async (
     const endOfMonth = new Date(currentYear, currentMonth + 1, 0)
     endOfMonth.setHours(23, 59, 59, 999) 
     const allLocalExpenses = await Expense.find({ houseCode })
-    const house = await House.findOne({ code: houseCode })
-    const timeZone = house?.timeZone
 
-    const allExpensesModified = allLocalExpenses.map((expense: any) => {
-      const localDate = convertToISO8601(expense.date, timeZone)
-      return {
-        ...expense._doc,
-        date: new Date(localDate),
-      }
-    }
-    )
-
-    const allExpenses = allExpensesModified.filter(
+    const allExpenses = allLocalExpenses.filter(
       (expense: any) =>
         expense.date >= sixMonthsAgo && expense.date <= endOfMonth
     )
-    
 
     if (!allExpenses.length) {
       return res.status(404).json({ message: "No expenses found" })
@@ -319,21 +268,6 @@ export const getLast6MonthsExpensesOfHouse = async (
         }
         return acc
       }, {})
-
-    const monthsOfTheYear = [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
-    ]
 
     const result = Object.entries(expenses).map((entry: any) => ({
       month: Number(entry[0]),
@@ -421,19 +355,7 @@ export const getCurrentMonthExpensesByHouseMembers = async (
       return res.status(404).json({ message: "No expenses found" })
     }
 
-    const house = await House.findOne({ code: houseCode })
-    const timeZone = house?.timeZone
-
-    const allExpensesModified = allExpenses.map((expense: any) => {
-      const localDate = convertToISO8601(expense.date, timeZone)
-      return {
-        ...expense._doc,
-        date: new Date(localDate),
-      }
-    }
-    )
-
-    const expensesOfthisMonth = allExpensesModified.filter(
+    const expensesOfthisMonth = allExpenses.filter(
       (expense) =>
         expense.date.getMonth() === currentMonth &&
         expense.date.getFullYear() === currentYear
@@ -480,10 +402,6 @@ export const getCurrentMonthExpenseComparison = async (
     }
 
     const date = new Date()
-    const house = await House.findOne({ code: houseCode })
-    const timeZone = house?.timeZone
-
-    // Check if `month` and `year` are provided in params, otherwise default to the current date
     const currentMonth = month ? parseInt(month) - 1 : date.getMonth()
     const currentYear = year ? parseInt(year) : date.getFullYear()
 
@@ -495,14 +413,7 @@ export const getCurrentMonthExpenseComparison = async (
       prevMonth = 11 // December of the previous year
     }
     
-    const modiFiedExpenses = expenses.map((expense: any) => {
-      const localDate = convertToISO8601(expense.date, timeZone)
-      return {
-        ...expense._doc,
-        date: new Date(localDate),
-    }
-  })
-    const expensesOfthisMonth = modiFiedExpenses.filter(
+    const expensesOfthisMonth = expenses.filter(
       (expense) =>
         expense.date.getMonth() === currentMonth &&
         expense.date.getFullYear() === currentYear
@@ -515,7 +426,7 @@ export const getCurrentMonthExpenseComparison = async (
     )
 
     // Filter expenses for the previous month and year
-    const expensesOfLastMonth = modiFiedExpenses.filter(
+    const expensesOfLastMonth = expenses.filter(
       (expense) =>
         expense.date.getMonth() === prevMonth &&
         expense.date.getFullYear() === prevYear
@@ -554,36 +465,15 @@ export const getCurrentMonthExpensesByCategory = async (
 ) => {
   try {
     const { houseCode, month, year } = req.params // Check for optional month and year params
-    const { userId } = req.body
     const today = new Date()
 
     // Determine the current month and year based on params or default to current
     const currentMonth = month ? parseInt(month) - 1 : today.getMonth() // months are 0-indexed in JavaScript
     const currentYear = year ? parseInt(year) : today.getFullYear()
 
-    // Get the first day of the selected/current month
-    const firstDayOfMonth = new Date(currentYear, currentMonth, 1)
-
-    // const currentMonthExpenses = await Expense.find({ houseCode, userId }) // Filter by houseCode and userId
-      // const currentMonthExpenses = await Expense.find({ houseCode }) 
-      // .select("category cost")
-      // .sort({ category: 1 })
-      // .gte("date", firstDayOfMonth) // Filter from the first day of the selected month
-      // .lte("date", new Date(currentYear, currentMonth + 1, 0)) // End of the selected month
-      // .exec()
     const allLocalExpenses = await Expense.find({ houseCode })
-    const house = await House.findOne({ code: houseCode })
-    const timeZone = house?.timeZone
-    
-    const allExpenses = allLocalExpenses.map((expense: any) => { 
-      const localDate = convertToISO8601(expense.date, timeZone)
-      return {
-        ...expense._doc,
-        date: new Date(localDate),
-      }
-    }
-    )
-    const currentMonthExpenses = allExpenses.filter(
+
+    const currentMonthExpenses = allLocalExpenses.filter(
       (expense: any) =>
         expense.date.getMonth() === currentMonth &&
         expense.date.getFullYear() === currentYear
@@ -648,32 +538,40 @@ export const getCurrentMonthExpensesByStore = async (
   res: Response
 ) => {
   try {
-    const { houseCode } = req.params
-    const { userId } = req.body
+    const { houseCode, month, year } = req.params
     const today = new Date()
-    const currentMonth = today.getMonth()
+    const currentMonth = month ? parseInt(month) - 1 : today.getMonth() // months are 0-indexed in JavaScript
+    const currentYear = year ? parseInt(year) : today.getFullYear()
 
     const expenses = await Expense.find({ houseCode })
-      .select("storeName cost")
+      .select("storeName cost date")
       .sort({ storeName: 1 })
-      .gte("date", new Date(today.getFullYear(), currentMonth, 1))
       .exec()
-
+     
     if (expenses.length === 0) {
       return res
         .status(404)
         .json({ message: "No expenses found for this user" })
     }
 
+    const currentMonthExpenses = expenses.filter(
+      (expense: any) =>
+        expense.date.getMonth() === currentMonth &&
+        expense.date.getFullYear() === currentYear
+    )
+
     //group by store
-    const expensesByStore = expenses.reduce((acc: any, curr: any) => {
-      if (acc[curr.storeName]) {
-        acc[curr.storeName] += curr.cost
+    const expensesByStore = currentMonthExpenses.reduce((acc: any, curr: any) => {
+      const storeName = curr.storeName.trim()
+      const store = Object.keys(acc).find((key) => storeName.includes(key))
+      if (store) {
+        acc[store] += curr.cost
       } else {
-        acc[curr.storeName] = curr.cost
+        acc[storeName] = curr.cost
       }
       return acc
-    }, {})
+    }
+    , {})
 
     const result = Object.entries(expensesByStore).map((entry: any) => ({
       name: entry[0],
@@ -699,14 +597,13 @@ export const getCurrentMonthExpensesByStore = async (
       (highestExpense.expenses / totalExpenses) * 100
     )
 
-    // get the image of the highest expense store
-    const image = await Store.findOne({ name: highestExpense.name }).select(
-      "image"
-    )
+    const topFive = result
+      .sort((a, b) => b.expenses - a.expenses)
+      .slice(0, 5)
 
     res
       .status(200)
-      .json({ result, highestExpense, percentage, image: image?.image })
+      .json({ result: topFive, highestExpense, percentage })
   } catch (error) {
     console.error(error)
     res.status(500).json({ message: "Server error" })
@@ -719,21 +616,8 @@ export const getLast6MonthsExpensesByCategory = async (
 ) => {
   try {
     const { houseCode, month, year } = req.params
-    const { userId } = req.body
     const today = new Date()
-    // const sixMonthsAgo = new Date(today)
-    // sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5)
-    // sixMonthsAgo.setDate(1)
 
-    // const allExpenses = await Expense.find({ houseCode })
-    //   .select("cost date category")
-    //   .sort({ date: 1 })
-    //   .gte("date", sixMonthsAgo)
-    //   .lte("date", today)
-    //   .exec()
-    // if (!allExpenses.length) {
-    //   return res.status(404).json({ message: "No expenses found" })
-    // }
     const currentMonth = month ? parseInt(month) - 1 : today.getMonth() // months are 0-indexed
     const currentYear = year ? parseInt(year) : today.getFullYear()
 
@@ -743,32 +627,12 @@ export const getLast6MonthsExpensesByCategory = async (
 
     // Fetch expenses within the last 6 months for the given house and user
     const allExpenses = await Expense.find({ houseCode })
-      // .select("cost date")
-      // .sort({ date: 1 })
-      // .gte("date", sixMonthsAgo)
-      // .lte("date", new Date(currentYear, currentMonth + 1, 0)) // Include all expenses till the end of current month
-      // .exec()
 
     if (!allExpenses.length) {
       return res.status(404).json({ message: "No expenses found" })
     }
 
-    const house = await House.findOne({ code : houseCode })
-    if (!house) {
-      return res.status(404).json({ message: "House not found" })
-    }
-    const timeZone = house.timeZone
-
-    const allExpensesModified = allExpenses.map((expense: any) => {
-      const localDate = convertToISO8601(expense.date, timeZone)
-      return {
-        ...expense._doc,
-        date: new Date(localDate),
-      }
-    }
-    )
-
-    const allExpensesLast6Months = allExpensesModified.filter(
+    const allExpensesLast6Months = allExpenses.filter(
       (expense: any) =>
         expense.date >= sixMonthsAgo && expense.date <= today
     )
@@ -792,20 +656,7 @@ export const getLast6MonthsExpensesByCategory = async (
         }
         return acc
       }, {})
-    const monthsOfTheYear = [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
-    ]
+
     const result = Object.entries(expenses).map((entry: any) => ({
       month: Number(entry[0]),
       expenses: entry[1],

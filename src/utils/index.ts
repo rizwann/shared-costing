@@ -43,3 +43,17 @@ export const convertToISO8601 = (utcDate: string, timeZone: string = "Europe/Ber
       // Output: 2025-01-01T00:05:00+01:00
       
 
+export const monthsOfTheYear = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ]

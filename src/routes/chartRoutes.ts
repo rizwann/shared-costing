@@ -91,6 +91,11 @@ router.get(
   checkHouseOwnership,
   getCurrentMonthExpensesByStore
 );
+router.get(
+  "/expenses/store/:houseCode/:month/:year",
+  checkHouseOwnership,
+  getCurrentMonthExpensesByStore
+);
 
 router.get(
   "/expenses/category/half-yearly/:houseCode",
