@@ -715,3 +715,144 @@ const catComparison = Object.values(CategoryName).map((category) => {
     res.status(500).json({ message: "Server error" })
   }
 }
+
+export const getLast6MonthsExpensesByHouseStoreName = async (req: Request, res: Response) => {
+  try {
+    const { houseCode, month, year } = req.params
+    const today = new Date()
+
+    const currentMonth = month ? parseInt(month) - 1 : today.getMonth() // months are 0-indexed
+    const currentYear = year ? parseInt(year) : today.getFullYear()
+
+    // Set the start date to six months ago
+    const sixMonthsAgo = new Date(currentYear, currentMonth, 1)
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5) // move six months back
+
+    // Fetch expenses within the last 6 months for the given house and user
+    const allExpenses = await Expense.find({ houseCode })
+
+    if (!allExpenses.length) {
+      return res.status(404).json({ message: "No expenses found" })
+    }
+
+    const allExpensesLast6Months = allExpenses.filter(
+      (expense: any) =>
+        expense.date >= sixMonthsAgo && expense.date <= today
+    )
+
+    const initialExpenses = allExpensesLast6Months
+      .map((entry: any) => ({
+        month: entry.date.getMonth(),
+        storeName: entry.storeName,
+        totalExpense: entry.cost,
+      }))
+
+    const allStoreNames = [...new Set(initialExpenses.map((entry: any) => entry.storeName))]
+
+    const modiFiedExpensesWithCommonStoreNames = initialExpenses.map((entry: any) => {
+      const commonStoreName = allStoreNames.find((storeName => storeName.includes(entry.storeName) || entry.storeName.includes(storeName) ||
+        storeName.toLowerCase().includes(entry.storeName.toLowerCase()) || entry.storeName.toLowerCase().includes(storeName.toLowerCase())))
+      const modieFiedStoreName = commonStoreName ? commonStoreName : entry.storeName
+      return {
+        month: entry.month,
+        storeName: modieFiedStoreName,
+        totalExpense: entry.totalExpense
+      }
+    }
+    )
+    const storeNames = [...new Set(modiFiedExpensesWithCommonStoreNames.map((entry: any) => entry.storeName))]
+    const bal = modiFiedExpensesWithCommonStoreNames.reduce((acc: any, curr: any) => {
+      if (acc[curr.month]) {
+        if (acc[curr.month][curr.storeName]) {
+          acc[curr.month][curr.storeName] += curr.totalExpense
+        } else {
+          acc[curr.month][curr.storeName] = curr.totalExpense
+        }
+      } else {
+        acc[curr.month] = {}
+        acc[curr.month][curr.storeName] = curr.totalExpense
+      }
+      return acc
+    }
+      , {})
+    const result = Object.entries(bal).map((entry: any) => ({
+      month: Number(entry[0]),
+      expenses: entry[1],
+    })
+    )
+
+    const finalResult = monthsOfTheYear.map((month, idX) => {
+      const entry = result.find((exp) => exp.month === idX)
+      return {
+        name: month,
+        expenses: entry ? entry.expenses : {},
+      }
+    })
+
+    const last6MonthsIndices: number[] = []
+    for (let i = 0; i < 6; i++) {
+      const monthIndex = (sixMonthsAgo.getMonth() + i) % 12;
+      last6MonthsIndices.push(monthIndex);
+    }
+
+    const last6Months = last6MonthsIndices.map((monthIndex) => {
+      return finalResult[monthIndex]
+    })
+
+
+
+    const responseAll = last6Months.map((month) => {
+      const monthName = month.name
+      const expenses = month.expenses
+      const storeNames = Object.keys(expenses)
+      const storeObj: any = {}
+      storeNames.forEach((storeName) => {
+        storeObj[storeName] = expenses[storeName]
+      })
+      return {
+        name: monthName,
+        ...storeObj,
+      }
+    }
+    )
+    const response = responseAll.map((month) => {
+      const monthName = month.name
+      const expenses = month
+      const storeNames = Object.keys(expenses)
+      const top10Stores = storeNames.sort((a, b) => expenses[b] - expenses[a])
+      const storeObj: any = {}
+      top10Stores.forEach((storeName) => {
+        storeObj[storeName] = expenses[storeName]
+      })
+      return {
+        name: monthName,
+        ...storeObj,
+      }
+    }
+    )
+
+    const storeComparison = storeNames.map((storeName) => {
+      const storeExpenses = response.map((month) => {
+        return {
+          month: month.name,
+          expenses: month[storeName] ? month[storeName] : 0
+        }
+      }
+      )
+      return {
+        name: storeName.trimEnd(),
+        expenses: storeExpenses
+      }
+    }
+    )
+
+
+    res.status(200).json({ storeNames, storeComparison, })
+
+
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ message: "Server error" })
+  }
+
+}

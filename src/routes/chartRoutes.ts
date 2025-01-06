@@ -8,6 +8,7 @@ import {
   getHouseExpensesByStores,
   getLast6MonthsExpensesByCategory,
   getLast6MonthsExpensesByHouse,
+  getLast6MonthsExpensesByHouseStoreName,
   getLast6MonthsExpensesOfHouse,
   getUserWeeklyTotal,
 } from "../controllers/chartDataController";
@@ -15,6 +16,7 @@ import {
   authMiddleware,
   checkHouseOwnership,
 } from "../middlewares/authMiddleware";
+import { get } from "lodash";
 
 const router = express.Router();
 
@@ -107,6 +109,18 @@ router.get(
   "/expenses/category/half-yearly/:houseCode/:month/:year",
   checkHouseOwnership,
   getLast6MonthsExpensesByCategory
+);
+
+router.get(
+  "/expenses/store/half-yearly/:houseCode",
+  checkHouseOwnership,
+  getLast6MonthsExpensesByHouseStoreName
+);
+
+router.get(
+  "/expenses/store/half-yearly/:houseCode/:month/:year",
+  checkHouseOwnership,
+  getLast6MonthsExpensesByHouseStoreName
 );
 
 export default router;
