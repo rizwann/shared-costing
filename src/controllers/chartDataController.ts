@@ -760,7 +760,8 @@ export const getLast6MonthsExpensesByHouseStoreName = async (req: Request, res: 
       }
     }
     )
-    const storeNames = [...new Set(modiFiedExpensesWithCommonStoreNames.map((entry: any) => entry.storeName))]
+    const storeNamesUnsorted = [...new Set(modiFiedExpensesWithCommonStoreNames.map((entry: any) => entry.storeName))]
+    const storeNames = storeNamesUnsorted?.sort()
     const bal = modiFiedExpensesWithCommonStoreNames.reduce((acc: any, curr: any) => {
       if (acc[curr.month]) {
         if (acc[curr.month][curr.storeName]) {
