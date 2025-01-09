@@ -35,12 +35,7 @@ export const convertToISO8601 = (utcDate: string, timeZone: string = "Europe/Ber
         const offsetSign = offsetMinutes <= 0 ? "+" : "-";
       
         return `${year}-${month}-${day}T${validHour}:${minute}:${second}${offsetSign}${offsetHours}:${offsetMins}`;
-      };
-      
-      // Example usage
-      const utcDate = "2024-12-31T23:05:00.000Z";
-      console.log(convertToISO8601(utcDate, "Europe/Berlin"));
-      // Output: 2025-01-01T00:05:00+01:00
+      }
       
 
 export const monthsOfTheYear = [

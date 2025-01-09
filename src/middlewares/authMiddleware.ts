@@ -34,7 +34,6 @@ export const checkExpenseDeleteEditRights = async (
     const userId = req.body.userId;
     //get the expense by id and if it does not exist return 404, dont go to catch block
     const expense = await Expense.findById(expenseId); // Find the expense by ID
-console.log("userId",userId)
     if (!expense) {
       return res.status(404).json({ message: "Expense not found" });
     }

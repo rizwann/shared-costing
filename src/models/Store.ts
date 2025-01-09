@@ -2,7 +2,7 @@ import mongoose, { Document, Schema } from "mongoose";
 
 export interface IStore extends Document {
   name: string;
-  image: string;
+  image?: string;
 }
 
 const StoreSchema: Schema = new Schema({
@@ -13,6 +13,7 @@ const StoreSchema: Schema = new Schema({
   },
   image: {
     type: String,
+    required: false,
   },
 });
 

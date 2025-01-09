@@ -5,6 +5,7 @@ import {
   createStore,
   deleteStore,
   getStoreById,
+  getStoreNames,
   getStores,
   updateStore,
 } from "../controllers/storeControllers";
@@ -44,9 +45,11 @@ router.use(authMiddleware);
 // Create a new store with image upload
 router.post("/create", upload.single("image"), authMiddleware, createStore);
 
-// Get all hstore
+// Get all store
 router.get("/", getStores);
 
+// Get all store names
+router.get("/names", getStoreNames)
 // Get a store by ID
 router.get("/:id", getStoreById);
 

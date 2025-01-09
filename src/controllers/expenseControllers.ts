@@ -159,6 +159,11 @@ export const createExpense = async (req: Request, res: Response) => {
     involvedUsersWithEmails.forEach((user) => {
       sendEmail(user.email, user.name!)
     })
+    //save the storeName to the store collection, if it doesn't exist
+    const store = await Store.findOne({ name: storeName })
+      if (!store) {
+        await Store.create({ name: storeName })
+      } 
 
     res.status(201).json(savedExpense)
   } catch (error: any) {
@@ -692,7 +697,7 @@ export const calculateHouseExpensesAndDebts = async (
 
     const allExpenses = allExpensesFromDB.map((expense: any) => {
       const localDate = convertToISO8601(expense.date, timeZone)
-      return { ...expense._doc, date: new Date(localDate), lewra: "voda" }
+      return { ...expense._doc, date: new Date(localDate) }
     }
     )
     // check which expenses have the date property

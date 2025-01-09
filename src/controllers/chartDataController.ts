@@ -846,9 +846,7 @@ export const getLast6MonthsExpensesByHouseStoreName = async (req: Request, res: 
       }
     }
     )
-
-
-    res.status(200).json({ storeNames, storeComparison, })
+    res.status(200).json({ storeNames, storeComparison })
 
 
   } catch (error) {

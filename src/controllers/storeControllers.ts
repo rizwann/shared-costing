@@ -34,6 +34,17 @@ export const getStores = async (req: Request, res: Response) => {
   }
 };
 
+export const getStoreNames = async (req: Request, res: Response) => {
+  try {
+    const stores = await Store.find().select("name")
+    const storeNames = stores.map((store) => store.name).sort()
+    res.status(200).json(storeNames)
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ message: "Server error" })
+  }
+}
+
 export const getStoreById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
