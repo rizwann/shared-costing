@@ -144,7 +144,7 @@ export const getLast6MonthsExpensesByHouse = async (
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5) // move six months back
 
     // Fetch expenses within the last 6 months for the given house and user
-    const allExpenses = await Expense.find({ userId, houseCode })
+    const allExpenses = await Expense.find({ houseCode })
 
     if (!allExpenses.length) {
       return res.status(404).json({ message: "No expenses found" })
