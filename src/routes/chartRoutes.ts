@@ -16,7 +16,6 @@ import {
   authMiddleware,
   checkHouseOwnership,
 } from "../middlewares/authMiddleware";
-import { get } from "lodash";
 
 const router = express.Router();
 

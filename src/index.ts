@@ -12,6 +12,7 @@ import forgerPWRoutes from "./routes/forgetPassword";
 import houseRoutes from "./routes/houseRoutes";
 import storeRoutes from "./routes/storeRoutes";
 import userRoutes from "./routes/userRoutes";
+import playerRoutes from "./routes/playerRoutes";
 
 const app = express();
 
@@ -85,6 +86,7 @@ app.use("/api/stores", storeRoutes);
 app.use("/api/expenses", expenseRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/chart", chartRoutes);
+app.use("/api/players", playerRoutes);
 app.use("/", forgerPWRoutes);
 app.get("/", (req, res) => {
   res.send("Hello World!");
