@@ -44,16 +44,18 @@ const storage = new CloudinaryStorage({
   params: async (req, file) => {
     return {
       folder: "receipts",
-      format: "jpg", // Automatically convert to jpg
-      public_id: "receipt"+ "-" + Date.now(),
+      format: "jpg", // Keep jpg or let Cloudinary auto-select
+      public_id: "receipt" + "-" + Date.now(),
       transformation: [
-        { width: 800, height: 600, crop: "limit" }, // Resize with a limit
-        { quality: "auto" }, // Automatic quality adjustment
-        { fetch_format: "auto" }, // Automatic format selection (e.g., WebP)
+        // Remove or adjust resizing to avoid quality loss
+        // { width: 800, height: 600, crop: "limit" }, // optional
+        { quality: "auto:best" }, // Use best quality setting
+        { fetch_format: "auto" }, // Let Cloudinary choose best format (e.g., WebP)
       ],
-    }
+    };
   },
-})
+});
+
 
 const upload = multer({ storage })
 
