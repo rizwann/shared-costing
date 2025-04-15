@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import puppeteer from "puppeteer";
 import PlayerStat from "../models/PlayerStat";
+import StatMeta from "../models/StatMeta";
 const url = 'https://cricheroes.com/team-profile/2379140/dusseldorf-rampagers/members';
 
 
@@ -70,8 +71,10 @@ export async function scrapeMembers(req: Request, res: Response) {
             console.log(`Player ${player.name} stats saved successfully to the database`);
         }
       }
-   
-        res.status(201).json({ message: "Players stats created successfully" });
+      await StatMeta.deleteMany();
+      await StatMeta.create({ lastUpdated: new Date() })
+      console.log('Player stats created successfully');
+      res.status(201).json({ message: "Players stats created successfully", lastUpdated: new Date() })
   
     } catch (error) {
       console.error('Error:', error);

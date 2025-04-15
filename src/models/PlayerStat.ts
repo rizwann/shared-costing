@@ -1,41 +1,4 @@
-// Player: {
-//     player_id: 18526831,
-//     name: 'Md Azad Hossain',
-//     profile_photo: 'https://media.cricheroes.in/user_profile/1711488363261_h7IGtggjL2RJ.jpeg',
-//     player_skill: 'BOWL',
-//     is_verified: 1,
-//     is_captain: 0,
-//     is_admin: 0,
-//     is_player_pro: 0,
-//     association_tag: '',
-//     is_primary_login: 1,
-//     batter_category: '',
-//     batter_category_info: '',
-//     bowler_category: 'Aspirant',
-//     bowler_category_info: 'This bowler may carry incredible potential and skills but may need more game time.',
-//     profileLink: 'https://cricheroes.com/player-profile/18526831/Md-Azad-Hossain/stats',
-//      stats: {
-//     Matches: '17',
-//     Innings: '10',
-//     'Not out': '3',
-//     Runs: '53',
-//     'Highest Runs': '19*',
-//     Avg: '7.57',
-//     SR: '112.77',
-//     '30s': '0',
-//     '50s': '0',
-//     '100s': '0',
-//     '4s': '9',
-//     '6s': '0',
-//     Ducks: '3',
-//     Won: '10',
-//     Loss: '7'
-//   }
-//   }
-
 import mongoose, { Document, Schema } from "mongoose";
-
-
 export interface IPlayerStat extends Document {
     player_id: number;
     name: string;
