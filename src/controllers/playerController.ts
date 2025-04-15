@@ -8,6 +8,7 @@ const url = 'https://cricheroes.com/team-profile/2379140/dusseldorf-rampagers/me
 export async function scrapeMembers(req: Request, res: Response) {
     const browser = await puppeteer.launch({ headless: true });
     const page = await browser.newPage();
+    console.log('Player stats creating started')
   
     try {
       await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36');
@@ -73,7 +74,7 @@ export async function scrapeMembers(req: Request, res: Response) {
       }
       await StatMeta.deleteMany();
       await StatMeta.create({ lastUpdated: new Date() })
-      console.log('Player stats created successfully');
+      console.log('Player stats created successfully')
       res.status(201).json({ message: "Players stats created successfully", lastUpdated: new Date() })
   
     } catch (error) {
@@ -110,3 +111,17 @@ export async function scrapeMembers(req: Request, res: Response) {
         res.status(500).json({ message: "Server error" });
         }
     };
+
+    export const getLastUpdated = async (req: Request, res: Response) => {
+        try {
+            const lastUpdated = await StatMeta.findOne().sort({ lastUpdated: -1 });
+            if (!lastUpdated) {
+                return res.status(404).json({ message: "No last updated date found" });
+            }
+            res.status(200).json(lastUpdated);
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ message: "Server error" });
+        }
+    }
+    
