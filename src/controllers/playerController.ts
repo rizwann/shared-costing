@@ -13,6 +13,7 @@ export async function scrapeMembers(req: Request, res: Response) {
   } catch (error) {
     console.error('Error:', error);
   }
+}
 
   async function scrapeData() {
     const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
