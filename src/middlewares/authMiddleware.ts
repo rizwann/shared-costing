@@ -332,3 +332,19 @@ export const isAdmin = async (
     res.status(500).json({ message: "Server error" });
   }
 };
+export const scrapTokenCheck = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const token = req.headers.authorization?.split(" ")[1]
+  if (!token) {
+    return res.status(401).json({ message: "Unauthorized, no token found" })
+  }
+
+  if (token !== process.env.SCRAPER_SECRET) {
+    return res.status(401).json({ message: "Unauthorized, invalid token" })
+  }
+
+  next()
+}
