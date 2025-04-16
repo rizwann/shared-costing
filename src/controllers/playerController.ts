@@ -13,7 +13,7 @@ export async function scrapeMembers(req: Request, res: Response) {
   
     try {
       await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36');
-      await page.goto(url, { waitUntil: 'networkidle2' });
+      await page.goto(url, { waitUntil: 'networkidle2', timeout: 0 });
   
       // Evaluate the page to extract members data
       const members = await page.evaluate(() => {
@@ -44,7 +44,7 @@ export async function scrapeMembers(req: Request, res: Response) {
   
        // now go to each player profile page and extract the stats one by one without closing the browser instance
       for (let i = 0; i < membersWithProfileLink.length; i++) {
-        await page.goto(membersWithProfileLink[i].profileLink, { waitUntil: 'networkidle2' });
+        await page.goto(membersWithProfileLink[i].profileLink, { waitUntil: 'networkidle2', timeout: 0 });
         const playerStats = await page.evaluate(() => {
             const stats = Array.from(document.querySelectorAll('.statWrapper')).map(stat => {
                 const statValue = (stat.querySelector('.stat') as HTMLElement).innerText;
