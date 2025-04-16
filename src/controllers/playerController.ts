@@ -8,14 +8,7 @@ const url = 'https://cricheroes.com/team-profile/2379140/dusseldorf-rampagers/me
 export async function scrapeMembers(req: Request, res: Response) {
   res.status(200).json({ message: 'Scraping started' })
   console.log('Player stats creating started 1')
-  try {
-    await scrapeData();
-  } catch (error) {
-    console.error('Error:', error);
-  }
-}
 
-  async function scrapeData() {
     const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
     
     const page = await browser.newPage();
@@ -86,7 +79,7 @@ export async function scrapeMembers(req: Request, res: Response) {
       await StatMeta.deleteMany();
       await StatMeta.create({ lastUpdated: new Date() })
       console.log('Player stats created successfully')
-      console.log( "Players stats created successfully",)
+     
   
     } catch (error) {
       console.error('Error:', error);
