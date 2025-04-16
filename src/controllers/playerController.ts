@@ -6,7 +6,8 @@ const url = 'https://cricheroes.com/team-profile/2379140/dusseldorf-rampagers/me
 
 
 export async function scrapeMembers(req: Request, res: Response) {
-    const browser = await puppeteer.launch({ headless: true });
+    const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+    
     const page = await browser.newPage();
     console.log('Player stats creating started')
   
