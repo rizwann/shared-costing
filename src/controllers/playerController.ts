@@ -2,8 +2,9 @@ import { Request, Response } from "express";
 import puppeteer from "puppeteer";
 import PlayerStat from "../models/PlayerStat";
 import StatMeta from "../models/StatMeta";
+import axios from "axios";
+import { Match } from "../models/Match";
 const url = 'https://cricheroes.com/team-profile/2379140/dusseldorf-rampagers/members';
-
 
 export async function scrapeMembers(req: Request, res: Response) {
   res.status(200).json({ message: 'Scraping started' })
@@ -181,6 +182,175 @@ export async function scrapeMembers(req: Request, res: Response) {
   }
 
 
+  // export const scrapTeamDetails = async (req: Request, res: Response) => {
+  //   res.status(200).json({ message: 'Scraping started' })
+  // const url = 'https://cricheroes.com/team-profile/2379140/dusseldorf-rampagers/matches';
+  //     const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+      
+  //     const page = await browser.newPage();
+    
+  //     try {
+  //       await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36');
+  //       await page.goto(url, { waitUntil: 'networkidle2', timeout: 0 });
+      
+  //       // Wait for batting stats
+  //       await page.waitForSelector('.card', { timeout: 10000 });
+  //      console.log('match scrapping started 3')
+        
+  //       const matches = await page.evaluate(() => {
+  //         const cards = Array.from(document.querySelectorAll('.card'));
+  //         return cards.map(stat => {
+  //           const tournament = (stat.querySelector('i') as HTMLElement)?.textContent || '';
+  //           const venueAndDate = (stat.querySelector('.left p') as HTMLElement)?.textContent || '';
+  //           const matchType = (stat.querySelector('.round') as HTMLElement)?.textContent || '';
+  //           const status = (stat.querySelector('.badge-wrapper') as HTMLElement)?.getAttribute('type') || '';
+  //           const teams = Array.from(stat.querySelectorAll('.sc-fb7dbe02-9')).map(el => el.textContent?.trim() || '');
+  //           const result = (stat.querySelector('.RfBqv span') as HTMLElement)?.textContent || '';
+  //           const link = stat.querySelector('a')?.getAttribute('href');
+  //           const fullLink = link ? `https://cricheroes.com${link}` : null;
+            
+        
+  //           return { tournament, venueAndDate, matchType, status, teams, result, link: fullLink, scoreImage: '' };
+  //         });
+  //       });
+  //       for (const match of matches) {
+  //         if (match.link) {
+  //           try {
+  //             const matchPage = await browser.newPage();
+  //             await matchPage.setViewport({ width: 1280, height: 800 });
+  //             await matchPage.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64)');
+  //             await matchPage.goto(match.link, { waitUntil: 'networkidle2', timeout: 0 });
+        
+  //             // Wait for the summary container to appear
+  //             await matchPage.waitForSelector('.sc-1a994d2e-16', { timeout: 10000 });
+        
+  //             const scoreSection = await matchPage.$('.sc-1a994d2e-16');
+  //             if (scoreSection) {
+  //               const fileName = `score-${match.teams[0].replace(/\s/g, '-')}-vs-${match.teams[1].replace(/\s/g, '-')}.png`;
+  //               await scoreSection.screenshot({ path: `./public/scores/${fileName}` });
+  //               match.scoreImage = `/scores/${fileName}`;
+  //             } else {
+  //               match.scoreImage = 'Score section not found';
+  //             }
+        
+  //             await matchPage.close();
+  //           } catch (error) {
+  //             console.error(`Failed to capture screenshot for ${match.link}`, error);
+  //             match.scoreImage = 'Error capturing screenshot';
+  //           }
+  //         }
+  //       }
+        
+        
+  //       console.log(matches)
+
+  //       // await StatMeta.deleteMany();
+  //       // await StatMeta.create({ lastUpdated: new Date() })
+  //       console.log('Matches created successfully')
+  //     }
+  //       catch (error) {
+  //         console.error('Error:', error);
+  //       } finally {
+  //         await browser.close();
+  //       }
+  // };
+
+  export const scrapTeamDetails = async (req: Request, res: Response) => {
+    res.status(200).json({ message: 'Scraping started' });
+  
+    const url = 'https://cricheroes.com/team-profile/2379140/dusseldorf-rampagers/matches';
+    const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+    const page = await browser.newPage();
+  
+    try {
+      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64)');
+      await page.goto(url, { waitUntil: 'networkidle2', timeout: 0 });
+  
+      await page.waitForSelector('.card', { timeout: 10000 });
+      console.log('Scraping matches...');
+  
+      const matches = await page.evaluate(() => {
+        const cards = Array.from(document.querySelectorAll('.card'));
+        return cards.map(stat => {
+          const tournament = (stat.querySelector('i') as HTMLElement)?.textContent || '';
+          const venueAndDate = (stat.querySelector('.left p') as HTMLElement)?.textContent || '';
+          const matchType = (stat.querySelector('.round') as HTMLElement)?.textContent || '';
+          const status = (stat.querySelector('.badge-wrapper') as HTMLElement)?.getAttribute('type') || '';
+          const teams = Array.from(stat.querySelectorAll('.sc-fb7dbe02-9')).map(el => el.textContent?.trim() || '');
+          const result = (stat.querySelector('.RfBqv span') as HTMLElement)?.textContent || '';
+          const link = stat.querySelector('a')?.getAttribute('href');
+          const fullLink = link ? `https://cricheroes.com${link}` : null;
+  
+          return { tournament, venueAndDate, matchType, status, teams, result, link: fullLink, score: {} };
+        });
+      });
+  
+      // Process each match and fetch scorecard JSON
+      for (const match of matches) {
+        if (match.link) {
+          try {
+            const urlParts = match.link.split('/').filter(Boolean);
+            const matchIdIndex = urlParts.indexOf('scorecard') + 1;
+            const matchId = urlParts[matchIdIndex];
+            const tournamentName = urlParts[matchIdIndex + 1];
+            const teamNames = urlParts[matchIdIndex + 2];
+  
+            const jsonUrl = `https://cricheroes.com/_next/data/iQqFQtMc1Ga0edajhPXbE/scorecard/${matchId}/${tournamentName}/${teamNames}/scorecard.json?matchId=${matchId}&tournamentName=${tournamentName}&teamNames=${teamNames}&tab=scorecard`;
+            const response = await axios.get(jsonUrl, {
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+                'Accept': 'application/json',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Referer': match.link, // important to fake browser behavior
+              }
+            });
+            
+            const innings = response.data?.pageProps?.scorecard || [];
+            const scores = innings.map((inning: any) => {
+              const teamId = inning.team_id;
+              const teamName = inning.teamName;
+              const summary = inning.inning?.summary?.score || '';
+              const over = inning.inning?.summary?.over || '';
+              return { teamName, summary, over };
+            }
+            );
+            const teamScores = scores.reduce((acc: any, score: any) => {
+              acc[score.teamName] = { run: score.summary, over: score.over };
+              return acc;
+            }, {});
+
+            console.log("Team Scores", teamScores)
+            match.score = teamScores;
+             
+          } catch (error:any) {
+            console.error(`Error fetching score JSON for match: ${match.link}`, error);
+            console.error('Failed to fetch JSON:', error.message);
+          }
+        }
+      }
+  
+      // You can store matches in DB here
+      await Match.deleteMany(); // Optional: only if you want to clear before inserting
+await Match.insertMany(matches);
+console.log('Matches saved to DB successfully');
+
+  
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      await browser.close();
+    }
+  };
+  
+  export const getMatches = async (req: Request, res: Response) => {
+    try {
+      const matches = await Match.find();
+      res.status(200).json(matches);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Server error" });
+    }
+  }
   export const getPlayerStats = async (req: Request, res: Response) => {
     try {
       const players = await PlayerStat.find();
