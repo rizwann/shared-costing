@@ -57,7 +57,7 @@ export const createExpense = async (req: Request, res: Response) => {
     const house = await House.findOne({ code: houseCode })
     const houseTimezone = house?.timeZone
     const currentTime = new Date()
-    
+
     const houseName = await House.findOne({ code: houseCode })
     const newExpense = new Expense({
       user: user.username,
@@ -131,11 +131,10 @@ export const createExpense = async (req: Request, res: Response) => {
               <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Description: ${description}</p>
               <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Store: ${storeName}</p>
               <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Paid By: ${savedExpense?.user}</p>
-              <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Date: ${
-                new Date(savedExpense.date).toLocaleString("de-DE", {
-                  timeZone: houseTimezone,
-                })
-              }</p>
+              <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">Date: ${new Date(savedExpense.date).toLocaleString("de-DE", {
+          timeZone: houseTimezone,
+        })
+          }</p>
               <a href="${emailLink}" class="button" style="display: inline-block; color: #ffffff; padding: 12px 20px; text-align: center; text-decoration: none; border-radius: 4px; margin-top: 20px; background-color: #7C3AED;">Go to the expense</a>
               <p class="text" style="color: #333; font-size: 16px; margin-top: 20px;">You can check the expense in the app.</p>
 
@@ -161,9 +160,9 @@ export const createExpense = async (req: Request, res: Response) => {
     })
     //save the storeName to the store collection, if it doesn't exist
     const store = await Store.findOne({ name: storeName })
-      if (!store) {
-        await Store.create({ name: storeName })
-      } 
+    if (!store) {
+      await Store.create({ name: storeName })
+    }
 
     res.status(201).json(savedExpense)
   } catch (error: any) {
@@ -227,7 +226,7 @@ export const updateExpense = async (req: Request, res: Response) => {
     //   if (!foundStore) {
     //     return res.status(404).json({ message: "Store not found" });
     //   }
-   if (houseCode) {
+    if (houseCode) {
       houseName = await House.findOne({ code: houseCode }).select("description")
       const users = await User.find({ houseCodes: houseCode })
       const usernames = users.map((user) => user.username)
@@ -240,10 +239,10 @@ export const updateExpense = async (req: Request, res: Response) => {
           .status(403)
           .json({ message: "Unauthorized, involved users are not in the house" })
       }
-   }
+    }
     const updatedExpense = await Expense.findByIdAndUpdate(
       expenseId,
-      { cost, category, description, involvedUsers, storeName, receipt, houseCode, houseName: houseName?.description   },
+      { cost, category, description, involvedUsers, storeName, receipt, houseCode, houseName: houseName?.description },
       { new: true }
     )
     // } else {
@@ -429,72 +428,81 @@ export const getExpensesOfHouse = async (req: Request, res: Response) => {
   try {
     const { houseCode } = req.params
     const { currentMonth, lastMonth } = req.query
-    const expenses = await Expense.find({ houseCode: houseCode }).sort({
-      date: -1,
-    })
-
-    if (expenses.length === 0) {
-      return res
-        .status(404)
-        .json({ message: "No expenses found for this user" })
-    }
-
-    const totalExpenses = Number(
-      expenses.reduce((total, expense) => total + expense.cost, 0).toFixed(2)
-    )
 
     const date = new Date()
-    const thisMonth = date.getMonth()
     const currentYear = date.getFullYear()
+    const thisMonth = date.getMonth()
     let prevMonth = date.getMonth() - 1
-    let prevYear = date.getFullYear()
+    let prevYear = currentYear
     if (prevMonth < 0) {
       prevYear -= 1
       prevMonth = 11 // December
     }
 
-    const expensesOfthisMonth = expenses.filter(
-      (expense) =>
-        expense.date.getMonth() === thisMonth &&
-        expense.date.getFullYear() === currentYear
-    )
+    // Calculate the start and end dates for the current month and the last month
+    const startOfLastMonth = new Date(prevYear, prevMonth, 1).getTime()
+    const endOfLastMonth = new Date(prevYear, prevMonth + 1, 0, 23, 59, 59).getTime()
 
-    const totalExpensesThisMonth = Number(
-      expensesOfthisMonth
-        .reduce((total, expense) => total + expense.cost, 0)
-        .toFixed(2)
-    )
+    const startOfCurrentMonth = new Date(currentYear, thisMonth, 1).getTime()
+    const endOfCurrentMonth = new Date(currentYear, thisMonth + 1, 0, 23, 59, 59).getTime()
 
-    const expensesOfLastMonth = expenses.filter(
-      (expense) =>
-        expense.date.getMonth() === prevMonth &&
-        expense.date.getFullYear() === prevYear
-    )
+    // Query for the current month and last month's expenses
+    const expensesQuery = Expense.find({ houseCode: houseCode })
+      .sort({ date: -1 })
+      .where("date")
+      .gte(startOfLastMonth)  // Get all expenses from the last month to the current month
+      .lte(endOfCurrentMonth)
 
-    const totalExpensesLastMonth = Number(
-      expensesOfLastMonth
-        .reduce((total, expense) => total + expense.cost, 0)
-        .toFixed(2)
-    )
 
+    const expenses = await expensesQuery
+
+    if (expenses.length === 0) {
+      return res.status(404).json({ message: "No expenses found for this house" })
+    }
+
+    // Calculate total expenses for this month and last month
+    let totalExpensesThisMonth = 0
+    let totalExpensesLastMonth = 0
+
+    const expensesOfThisMonth = expenses.filter((expense) => {
+      const expenseDate = expense.date.getTime(); // Convert the expense date to a timestamp
+      const isThisMonth = expenseDate >= startOfCurrentMonth && expenseDate <= endOfCurrentMonth;
+      if (isThisMonth) {
+        totalExpensesThisMonth += expense.cost;
+      }
+      return isThisMonth;
+    });
+
+    const expensesOfLastMonth = expenses.filter((expense) => {
+      const expenseDate = expense.date.getTime(); // Convert the expense date to a timestamp
+      const isLastMonth = expenseDate >= startOfLastMonth && expenseDate <= endOfLastMonth;
+      if (isLastMonth) {
+        totalExpensesLastMonth += expense.cost;
+      }
+      return isLastMonth;
+    });
+
+
+    // Respond based on the query parameters
     res.status(200).json(
       currentMonth === "true"
         ? {
-            totalExpenses: totalExpensesThisMonth,
-            expenses: expensesOfthisMonth,
-          }
+          totalExpenses: totalExpensesThisMonth,
+          expenses: expensesOfThisMonth,
+        }
         : lastMonth === "true"
-        ? {
+          ? {
             totalExpenses: totalExpensesLastMonth,
             expenses: expensesOfLastMonth,
           }
-        : expenses
+          : expenses
     )
   } catch (error) {
     console.error(error)
     res.status(500).json({ message: "Server error" })
   }
 }
+
 
 // get expense of current year by the user in a specific house
 
@@ -704,15 +712,15 @@ export const calculateHouseExpensesAndDebts = async (
     let expenses =
       month && year
         ? allExpenses.filter(
-            (expense) =>
-              expense.date.getFullYear() === Number(year) &&
-              expense.date.getMonth() === Number(month) - 1
-          )
+          (expense) =>
+            expense.date.getFullYear() === Number(year) &&
+            expense.date.getMonth() === Number(month) - 1
+        )
         : allExpenses.filter(
-            (expense) =>
-              expense.date.getMonth() === currentMonth &&
-              expense.date.getFullYear() === currentYear
-          )
+          (expense) =>
+            expense.date.getMonth() === currentMonth &&
+            expense.date.getFullYear() === currentYear
+        )
     //for all months of the year
     if (month === "all" && year !== "all") {
       expenses = allExpenses.filter(
