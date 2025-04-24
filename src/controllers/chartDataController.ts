@@ -126,66 +126,80 @@ export const getUserWeeklyTotal = async (req: Request, res: Response) => {
 
 export const getLast6MonthsExpensesByHouse = async (req: Request, res: Response) => {
   try {
-    const { houseCode, month, year } = req.params; // Check for optional month and year params
-    const { userId } = req.body;
+    const { houseCode, month, year } = req.params;
     const today = new Date();
 
-    // Determine the current month and year based on params or default to current
-    const currentMonth = month ? parseInt(month) - 1 : today.getMonth(); // months are 0-indexed
+    const currentMonth = month ? parseInt(month) - 1 : today.getMonth(); // 0-indexed
     const currentYear = year ? parseInt(year) : today.getFullYear();
 
-    // Set the start date to six months ago
-    const sixMonthsAgo = new Date(currentYear, currentMonth, 1);
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5); // move six months back
+    // Start from the 1st of current month and go back 5 months
+    const startDate = new Date(currentYear, currentMonth - 5, 1);
+    const endDate = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59); // end of current month
 
-    // Fetch expenses for the given house
-    const allExpenses = await Expense.find({ houseCode });
+    // Aggregate directly in MongoDB
+    const monthlyExpenses = await Expense.aggregate([
+      {
+        $match: {
+          houseCode,
+          date: {
+            $gte: startDate,
+            $lte: endDate,
+          },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            month: { $month: "$date" },
+            year: { $year: "$date" },
+          },
+          total: { $sum: "$cost" },
+        },
+      },
+    ]);
 
-    if (!allExpenses.length) {
+    if (!monthlyExpenses.length) {
       return res.status(404).json({ message: "No expenses found" });
     }
 
-    // Aggregate expenses by month
-    const expenses = allExpenses.reduce((acc: any, entry: any) => {
-      const month = entry.date.getMonth();
-      acc[month] = acc[month] ? acc[month] + entry.cost : entry.cost;
-      return acc;
-    }, {});
+    // Normalize to last 6 months with 0 fallback
+    const monthsOfTheYear = [
+      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    ];
 
-    // Create result array with months and their respective total expenses
-    const result = monthsOfTheYear.map((monthName, index) => ({
-      name: monthName,
-      expenses: expenses[index] ? expenses[index].toFixed(2) : 0,
-    }));
+    const last6Months: { name: string; expenses: string }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(currentYear, currentMonth - i, 1);
+      const month = date.getMonth() + 1;
+      const year = date.getFullYear();
 
-    // Get the last 6 months' expenses based on the current month
-    const last6MonthsIndices = Array.from({ length: 6 }, (_, i) => (sixMonthsAgo.getMonth() + i) % 12);
-    const last6Months = last6MonthsIndices.map((monthIndex) => result[monthIndex]);
+      const matched = monthlyExpenses.find(
+        (entry) => entry._id.month === month && entry._id.year === year
+      );
 
-    // Get current month expenses and calculate the average of the last 5 months
+      last6Months.push({
+        name: monthsOfTheYear[month - 1],
+        expenses: matched ? matched.total.toFixed(2) : "0",
+      });
+    }
+
     const currentMonthExpenses = Number(last6Months[5].expenses);
-    const last5Months = last6Months.slice(0, 5);
+    const last5 = last6Months.slice(0, 5).map((m) => Number(m.expenses));
+    const nonZero = last5.filter((val) => val > 0);
+    const avg = nonZero.length ? nonZero.reduce((a, b) => a + b, 0) / nonZero.length : 0;
+    const percentage = avg === 0 ? 0 : Math.round(((currentMonthExpenses - avg) / avg) * 100);
 
-    // Filter months with no expenses for averaging
-    const monthsWithExpenses = last5Months.filter((month) => Number(month.expenses) > 0);
-    const totalExpenses = monthsWithExpenses.reduce((total, month) => total + Number(month.expenses), 0);
-    const last5MonthsExpensesAvg = monthsWithExpenses.length ? totalExpenses / monthsWithExpenses.length : 0;
-
-    // Calculate percentage difference between current month and last 5 months average
-    const percentage = isNaN(last5MonthsExpensesAvg)
-      ? 0
-      : Math.round(((currentMonthExpenses - last5MonthsExpensesAvg) / last5MonthsExpensesAvg) * 100);
-
-    // Send the response with the percentage and the last 6 months' data
     res.status(200).json({
       percentage,
       last6Months,
     });
   } catch (error) {
-    console.error(error);
+    console.error("Error in getLast6MonthsExpensesByHouse:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
+
 
 
 export const getLast6MonthsExpensesOfHouse = async (

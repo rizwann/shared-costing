@@ -423,79 +423,92 @@ export const getExpensesOfCurrentWeekByUserInHouse = async (
   }
 }
 
-// get expense of current month by house
 export const getExpensesOfHouse = async (req: Request, res: Response) => {
   try {
     const { houseCode } = req.params
     const { currentMonth, lastMonth } = req.query
 
-    const date = new Date()
-    const currentYear = date.getFullYear()
-    const thisMonth = date.getMonth()
-    let prevMonth = date.getMonth() - 1
+    const now = new Date()
+    const thisMonth = now.getMonth()
+    const currentYear = now.getFullYear()
+
+    let prevMonth = thisMonth - 1
     let prevYear = currentYear
     if (prevMonth < 0) {
+      prevMonth = 11
       prevYear -= 1
-      prevMonth = 11 // December
     }
 
-    // Calculate the start and end dates for the current month and the last month
-    const startOfLastMonth = new Date(prevYear, prevMonth, 1).getTime()
-    const endOfLastMonth = new Date(prevYear, prevMonth + 1, 0, 23, 59, 59).getTime()
+    const startOfCurrentMonth = new Date(currentYear, thisMonth, 1)
+    const endOfCurrentMonth = new Date(
+      currentYear,
+      thisMonth + 1,
+      0,
+      23,
+      59,
+      59,
+      999
+    )
 
-    const startOfCurrentMonth = new Date(currentYear, thisMonth, 1).getTime()
-    const endOfCurrentMonth = new Date(currentYear, thisMonth + 1, 0, 23, 59, 59).getTime()
+    const startOfLastMonth = new Date(prevYear, prevMonth, 1)
+    const endOfLastMonth = new Date(prevYear, prevMonth + 1, 0, 23, 59, 59, 999)
 
-    // Query for the current month and last month's expenses
-    const expensesQuery = Expense.find({ houseCode: houseCode })
-      .sort({ date: -1 })
-      .where("date")
-      .gte(startOfLastMonth)  // Get all expenses from the last month to the current month
-      .lte(endOfCurrentMonth)
+    let expenses: any[] = []
 
-
-    const expenses = await expensesQuery
+    if (currentMonth === "true" || lastMonth === "true") {
+      // Get only expenses from last month and this month
+      expenses = await Expense.find({
+        houseCode,
+        date: {
+          $gte: startOfLastMonth,
+          $lte: endOfCurrentMonth,
+        },
+      }).sort({ date: -1 })
+    } else {
+      // Get all expenses for the house
+      expenses = await Expense.find({ houseCode }).sort({ date: -1 })
+    }
 
     if (expenses.length === 0) {
-      return res.status(404).json({ message: "No expenses found for this house" })
+      return res
+        .status(404)
+        .json({ message: "No expenses found for this house" })
     }
 
-    // Calculate total expenses for this month and last month
     let totalExpensesThisMonth = 0
     let totalExpensesLastMonth = 0
 
     const expensesOfThisMonth = expenses.filter((expense) => {
-      const expenseDate = expense.date.getTime(); // Convert the expense date to a timestamp
-      const isThisMonth = expenseDate >= startOfCurrentMonth && expenseDate <= endOfCurrentMonth;
-      if (isThisMonth) {
-        totalExpensesThisMonth += expense.cost;
-      }
-      return isThisMonth;
-    });
+      const date = new Date(expense.date).getTime()
+      const isThisMonth =
+        date >= startOfCurrentMonth.getTime() &&
+        date <= endOfCurrentMonth.getTime()
+      if (isThisMonth) totalExpensesThisMonth += expense.cost
+
+      return isThisMonth
+    })
 
     const expensesOfLastMonth = expenses.filter((expense) => {
-      const expenseDate = expense.date.getTime(); // Convert the expense date to a timestamp
-      const isLastMonth = expenseDate >= startOfLastMonth && expenseDate <= endOfLastMonth;
-      if (isLastMonth) {
-        totalExpensesLastMonth += expense.cost;
-      }
-      return isLastMonth;
-    });
+      const date = new Date(expense.date).getTime()
+      const isLastMonth =
+        date >= startOfLastMonth.getTime() && date <= endOfLastMonth.getTime()
+      if (isLastMonth) totalExpensesLastMonth += expense.cost
 
+      return isLastMonth
+    })
 
-    // Respond based on the query parameters
     res.status(200).json(
       currentMonth === "true"
         ? {
-          totalExpenses: totalExpensesThisMonth,
-          expenses: expensesOfThisMonth,
-        }
+            totalExpenses: Number(totalExpensesThisMonth.toFixed(2)),
+            expenses: expensesOfThisMonth,
+          }
         : lastMonth === "true"
-          ? {
-            totalExpenses: totalExpensesLastMonth,
+        ? {
+            totalExpenses: Number(totalExpensesLastMonth.toFixed(2)),
             expenses: expensesOfLastMonth,
           }
-          : expenses
+        : expenses
     )
   } catch (error) {
     console.error(error)
@@ -503,8 +516,6 @@ export const getExpensesOfHouse = async (req: Request, res: Response) => {
   }
 }
 
-
-// get expense of current year by the user in a specific house
 
 export const getExpensesOfCurrentYearByUserInHouse = async (
   req: Request,
@@ -578,34 +589,28 @@ export const getExpensesOfSpecificHouseByYear = async (
   res: Response
 ) => {
   try {
-    const { houseCode, year } = req.params
-    const expenses = await Expense.find({ houseCode: houseCode })
+    const { houseCode, year } = req.params;
+    const numericYear = parseInt(year);
 
-    if (!expenses) {
-      return res.status(404).json({ message: "Expenses not found" })
+    const startOfYear = new Date(numericYear, 0, 1);
+    const endOfYear = new Date(numericYear, 11, 31, 23, 59, 59, 999);
+
+    const expensesOfSpecificYear = await Expense.find({
+      houseCode,
+      date: { $gte: startOfYear, $lte: endOfYear },
+    });
+
+    if (!expensesOfSpecificYear.length) {
+      return res.status(200).json({ message: `No expenses found for ${year}` });
     }
 
-    if (expenses.length === 0) {
-      return res
-        .status(200)
-        .json({ message: "No expenses found for this user" })
-    }
-    // check which expenses has date property
-    // Todo: remove this after adding date property to all expenses
-    const expensesWithDateProp = expenses.filter((expense) => expense.date)
-    const expensesOfSpecificYear = expensesWithDateProp.filter(
-      (expense) => expense.date.getFullYear() === Number(year)
-    )
-    if (expensesOfSpecificYear.length === 0) {
-      return res.status(200).json({ message: "No expenses found for " + year })
-    }
-
-    res.status(200).json(expensesOfSpecificYear)
+    res.status(200).json(expensesOfSpecificYear);
   } catch (error) {
-    console.error(error)
-    res.status(500).json({ message: "Server error" })
+    console.error("Error in getExpensesOfSpecificHouseByYear:", error);
+    res.status(500).json({ message: "Server error" });
   }
-}
+};
+
 
 // get expenses of a specific month and year by the user in a specific house
 
