@@ -242,7 +242,9 @@ export const updateExpense = async (req: Request, res: Response) => {
     }
     const updatedExpense = await Expense.findByIdAndUpdate(
       expenseId,
-      { cost, category, description, involvedUsers, storeName, receipt, houseCode, houseName: houseName?.description },
+      { cost, category, description, involvedUsers, storeName, receipt, 
+         date: req.body.date ? new Date(req.body.date) : undefined,
+        houseCode, houseName: houseName?.description },
       { new: true }
     )
     // } else {
