@@ -60,7 +60,7 @@ app.use(cors(corsOptions));
 app.use("/uploads", express.static("uploads"));
 app.use(compression());
 app.use(bodyParser.json()); // Parse JSON requests
-const port = 3000;
+const port = process.env.PORT || 3000
 const mongoURI = process.env.MONGODB_URI as string;
 
 // MongoDB Connection
@@ -99,6 +99,7 @@ db.on("error", (err: Error) => {
 });
 
 db.once("open", () => {
+  console.log("Connecting to MongoDB with URI:", process.env.MONGODB_URI)
   console.log("Connected to MongoDB");
   app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
