@@ -97,7 +97,16 @@ export const createExpense = async (req: Request, res: Response) => {
           user: process.env.APP_EMAIL as string,
           pass: process.env.APP_PASSWORD as string,
         },
+        secure: false,
+        tls: {
+          rejectUnauthorized: false,
+        },
+        connectionTimeout: 10000, // optional
+        greetingTimeout: 10000, // optional
+        socketTimeout: 10000, // optional
+        dns: { family: 4 }, // Force IPv4
       })
+      
       const timeOnlyHoursMinutes = new Date(savedExpense.date).toLocaleString("de-DE", { timeZone: houseTimezone, hour: "2-digit", minute: "2-digit" })
       const addedBy = await User.findById(userId).select("username")
       const mailOptions = {
