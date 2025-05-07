@@ -92,12 +92,14 @@ export const createExpense = async (req: Request, res: Response) => {
     const sendEmail = async (email: string, name: string) => {
       const nodemailer = require("nodemailer")
       const transporter = nodemailer.createTransport({
-        service: "gmail",
+        host: "smtp.gmail.com",
+        port: 587,
+        secure: false,
+        requireTLS: true,
         auth: {
           user: process.env.APP_EMAIL as string,
           pass: process.env.APP_PASSWORD as string,
         },
-        secure: false,
         tls: {
           rejectUnauthorized: false,
         },
