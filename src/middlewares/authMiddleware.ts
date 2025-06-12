@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 import Expense from "../models/Expense";
 import House from "../models/House";
 import { User } from "../models/User";
+import { Note } from "../models/Note";
 
 export const authMiddleware = (
   req: Request,
@@ -62,6 +63,45 @@ export const checkExpenseDeleteEditRights = async (
         .status(403)
         .json({ message: "Unauthorized, you are not the creator or payer of this expense" });
     }
+
+    next();
+  } catch (error: any) {
+    if (error.name === "ValidationError") {
+      return res.status(400).json({ message: error.message });
+    }
+    if (error.name === "CastError") {
+      return res
+        .status(400)
+        .json({ message: `Invalid value for ${error.path} was provided` });
+    }
+    res.status(500).json({ message: "Server error" });
+  }
+}
+
+export const checkNoteOwnership = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const houseCode = req.params.houseCode || req.body.houseCode
+    console.log("houseCode", houseCode, req.params.houseCode, req.body.houseCode, req.body)
+    const {userId} = req.body;
+    if(!houseCode){
+      return res.status(400).json({ message: "House code is required" });
+    }
+    // Check if the user requesting the action is also a member of the house the note belongs to
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    const userHouses = user.houseCodes
+    if (!userHouses.includes(houseCode)) {
+      return res
+        .status(403)
+        .json({ message: "Unauthorized, you don't belong to this house" });
+    }
+
 
     next();
   } catch (error: any) {
