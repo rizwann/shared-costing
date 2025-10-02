@@ -2,7 +2,8 @@ import { Request, Response } from "express"
 import Expense, { CategoryName } from "../models/Expense"
 import { User } from "../models/User"
 import { monthsOfTheYear } from "../utils"
-
+import House from "../models/House"
+import moment from "moment-timezone";
 // Get house expenses by store
 
 export const getHouseExpensesByStores = async (req: Request, res: Response) => {
@@ -127,31 +128,35 @@ export const getUserWeeklyTotal = async (req: Request, res: Response) => {
 export const getLast6MonthsExpensesByHouse = async (req: Request, res: Response) => {
   try {
     const { houseCode, month, year } = req.params;
-    const today = new Date();
 
-    const currentMonth = month ? parseInt(month) - 1 : today.getMonth(); // 0-indexed
-    const currentYear = year ? parseInt(year) : today.getFullYear();
+    // Fetch house to get its time zone
+    const house = await House.findOne({ code: houseCode });
+    if (!house) return res.status(404).json({ message: "House not found" });
 
-    // Start from the 1st of current month and go back 5 months
-    const startDate = new Date(currentYear, currentMonth - 5, 1);
-    const endDate = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59); // end of current month
+    const tz = house.timeZone || "UTC";
 
-    // Aggregate directly in MongoDB
+    // Determine the current month/year in house's local time
+    const nowTz = month && year
+      ? moment.tz({ year: parseInt(year), month: parseInt(month) - 1 }, tz)
+      : moment.tz(tz);
+
+    // Start of the 6-month period (5 months ago from current month)
+    const startOfPeriod = nowTz.clone().startOf("month").subtract(5, "months");
+    const endOfPeriod = nowTz.clone().endOf("month");
+
+    // Aggregate expenses in MongoDB
     const monthlyExpenses = await Expense.aggregate([
       {
         $match: {
           houseCode,
-          date: {
-            $gte: startDate,
-            $lte: endDate,
-          },
+          date: { $gte: startOfPeriod.toDate(), $lte: endOfPeriod.toDate() },
         },
       },
       {
         $group: {
           _id: {
-            month: { $month: "$date" },
-            year: { $year: "$date" },
+            year: { $year: { date: "$date", timezone: tz } },
+            month: { $month: { date: "$date", timezone: tz } },
           },
           total: { $sum: "$cost" },
         },
@@ -162,28 +167,30 @@ export const getLast6MonthsExpensesByHouse = async (req: Request, res: Response)
       return res.status(404).json({ message: "No expenses found" });
     }
 
-    // Normalize to last 6 months with 0 fallback
+    // Month names for display
     const monthsOfTheYear = [
       "Jan", "Feb", "Mar", "Apr", "May", "Jun",
       "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
     ];
 
+    // Build last 6 months array with 0 fallback
     const last6Months: { name: string; expenses: string }[] = [];
     for (let i = 5; i >= 0; i--) {
-      const date = new Date(currentYear, currentMonth - i, 1);
-      const month = date.getMonth() + 1;
-      const year = date.getFullYear();
+      const date = nowTz.clone().subtract(i, "months");
+      const monthIndex = date.month(); // 0-based
+      const yearVal = date.year();
 
       const matched = monthlyExpenses.find(
-        (entry) => entry._id.month === month && entry._id.year === year
+        (entry) => entry._id.month - 1 === monthIndex && entry._id.year === yearVal
       );
 
       last6Months.push({
-        name: monthsOfTheYear[month - 1],
+        name: monthsOfTheYear[monthIndex],
         expenses: matched ? matched.total.toFixed(2) : "0",
       });
     }
 
+    // Calculate percentage change vs. average of last 5 months
     const currentMonthExpenses = Number(last6Months[5].expenses);
     const last5 = last6Months.slice(0, 5).map((m) => Number(m.expenses));
     const nonZero = last5.filter((val) => val > 0);
@@ -202,37 +209,45 @@ export const getLast6MonthsExpensesByHouse = async (req: Request, res: Response)
 
 
 
+
 export const getLast6MonthsExpensesOfHouse = async (
   req: Request,
   res: Response
 ) => {
   try {
     const { houseCode, month, year } = req.params;
-    const today = new Date();
 
-    const currentMonth = month ? parseInt(month) - 1 : today.getMonth();
-    const currentYear = year ? parseInt(year) : today.getFullYear();
+    // Fetch house to get its timezone
+    const house = await House.findOne({ code: houseCode });
+    if (!house) return res.status(404).json({ message: "House not found" });
 
-    const endOfMonth = new Date(currentYear, currentMonth + 1, 0);
-    endOfMonth.setHours(23, 59, 59, 999);
+    const tz = house.timeZone || "UTC"; // e.g., "Europe/Berlin"
 
-    const sixMonthsAgo = new Date(currentYear, currentMonth, 1);
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
-    sixMonthsAgo.setHours(0, 0, 0, 0);
+    // Determine current month/year in house's time zone
+    const nowTz = month && year
+      ? moment.tz({ year: parseInt(year), month: parseInt(month) - 1 }, tz)
+      : moment.tz(tz);
 
-    // Aggregate directly in MongoDB
+    // Start of period: 5 months ago
+    const startOfPeriod = nowTz.clone().startOf("month").subtract(5, "months");
+    const endOfPeriod = nowTz.clone().endOf("month");
+
+    // Aggregate expenses in MongoDB
     const expenses = await Expense.aggregate([
       {
         $match: {
           houseCode,
-          date: { $gte: sixMonthsAgo, $lte: endOfMonth },
+          date: {
+            $gte: startOfPeriod.toDate(),
+            $lte: endOfPeriod.toDate(),
+          },
         },
       },
       {
         $group: {
           _id: {
-            year: { $year: "$date" },
-            month: { $month: "$date" },
+            year: { $year: { date: "$date", timezone: tz } },
+            month: { $month: { date: "$date", timezone: tz } },
           },
           total: { $sum: "$cost" },
         },
@@ -241,7 +256,7 @@ export const getLast6MonthsExpensesOfHouse = async (
         $project: {
           _id: 0,
           year: "$_id.year",
-          month: { $subtract: ["$_id.month", 1] }, // JS month index (0-based)
+          month: { $subtract: ["$_id.month", 1] }, // JS month index
           total: { $round: ["$total", 2] },
         },
       },
@@ -251,22 +266,23 @@ export const getLast6MonthsExpensesOfHouse = async (
       return res.status(404).json({ message: "No expenses found" });
     }
 
-    // Map Mongo results to full month name list
+    // Month names for display
     const monthsOfTheYear = [
       "January", "February", "March", "April", "May", "June",
       "July", "August", "September", "October", "November", "December",
     ];
 
-    // Build a map of expenses by month index
+    // Map expenses by month index
     const expensesMap = new Map<number, number>();
     expenses.forEach(({ month, total }) => {
       expensesMap.set(month, total);
     });
 
-    // Build the final list of last 6 months, ensuring correct wrap-around for Jan-Dec
+    // Build the last 6 months array
+    const currentMonthIndex = nowTz.month();
     const last6Months: { name: string; expenses: string }[] = [];
     for (let i = 5; i >= 0; i--) {
-      const monthIndex = (currentMonth - i + 12) % 12;
+      const monthIndex = (currentMonthIndex - i + 12) % 12;
       const expense = expensesMap.get(monthIndex) || 0;
       last6Months.push({
         name: monthsOfTheYear[monthIndex],
@@ -274,7 +290,7 @@ export const getLast6MonthsExpensesOfHouse = async (
       });
     }
 
-    // Calculate percentage change
+    // Calculate percentage change vs. average of last 5 months
     const currentMonthExpenses = Number(last6Months[5].expenses);
     const last5Months = last6Months.slice(0, 5);
     const validMonths = last5Months.filter((m) => Number(m.expenses) > 0);
@@ -285,7 +301,7 @@ export const getLast6MonthsExpensesOfHouse = async (
     if (isNaN(percentage)) percentage = 0;
 
     res.status(200).json({
-      totalExpensesThisMonth: currentMonthExpenses.toFixed(2),
+      totalExpensesThisMonth: Number(currentMonthExpenses.toFixed(2)),
       percentage,
       last6Months,
     });
@@ -293,26 +309,32 @@ export const getLast6MonthsExpensesOfHouse = async (
     console.error(error);
     res.status(500).json({ message: "Server error" });
   }
-};
+}
 
 
 export const getCurrentMonthExpensesByHouseMembers = async (req: Request, res: Response) => {
   try {
     const { houseCode, month, year } = req.params;
-    const today = new Date();
 
-    // Use provided month and year, or fallback to the current month/year
-    const currentMonth = month ? parseInt(month) - 1 : today.getMonth(); // months are 0-indexed
-    const currentYear = year ? parseInt(year) : today.getFullYear();
+    // Fetch house to get its time zone
+    const house = await House.findOne({ code: houseCode });
+    if (!house) return res.status(404).json({ message: "House not found" });
 
-    // Define the start and end dates for the current month
-    const startOfMonth = new Date(Date.UTC(currentYear, currentMonth, 1));
-    const endOfMonth = new Date(Date.UTC(currentYear, currentMonth + 1, 0, 23, 59, 59, 999));
+    const tz = house.timeZone || "UTC";
 
-    // Fetch expenses for the current month for the given houseCode
+    // Determine the current month/year in house's time zone
+    const nowTz = month && year
+      ? moment.tz({ year: parseInt(year), month: parseInt(month) - 1 }, tz)
+      : moment.tz(tz);
+
+    // Start and end of current month in house's local time
+    const startOfMonth = nowTz.clone().startOf("month");
+    const endOfMonth = nowTz.clone().endOf("month");
+
+    // Fetch expenses in UTC (converted from local time boundaries)
     const allExpenses = await Expense.find({
       houseCode,
-      date: { $gte: startOfMonth, $lte: endOfMonth },
+      date: { $gte: startOfMonth.toDate(), $lte: endOfMonth.toDate() },
     }).sort({ date: -1 });
 
     if (!allExpenses.length) {
@@ -320,23 +342,17 @@ export const getCurrentMonthExpensesByHouseMembers = async (req: Request, res: R
     }
 
     // Aggregate expenses by user
-    const expenses = allExpenses.reduce((acc: any, expense: any) => {
+    const expensesByUser = allExpenses.reduce((acc: Record<string, number>, expense: any) => {
       acc[expense.user] = (acc[expense.user] || 0) + expense.cost;
       return acc;
     }, {});
 
-    // Fetch users belonging to the houseCode
+    // Fetch users belonging to the house
     const users = await User.find({ houseCodes: houseCode });
 
-    // Create a user map for fast look-up
-    const userMap = users.reduce((map: any, user: any) => {
-      map[user.username] = user;
-      return map;
-    }, {});
-
     // Combine expenses and user information
-    const result = users.map((user) => {
-      const userExpense = expenses[user.username] || 0;
+    const result = users.map(user => {
+      const userExpense = expensesByUser[user.username] || 0;
       return {
         name: user.username,
         expenses: userExpense.toFixed(2),
@@ -351,60 +367,50 @@ export const getCurrentMonthExpensesByHouseMembers = async (req: Request, res: R
   }
 };
 
-
-export const getCurrentMonthExpenseComparison = async (
-  req: Request,
-  res: Response
-) => {
+export const getCurrentMonthExpenseComparison = async (req: Request, res: Response) => {
   const { houseCode, month, year } = req.params;
   const { userId } = req.body;
+
   try {
-    const date = new Date();
-    const currentMonth = month ? parseInt(month) - 1 : date.getMonth();
-    const currentYear = year ? parseInt(year) : date.getFullYear();
+    const house = await House.findOne({ code: houseCode });
+    if (!house) return res.status(404).json({ message: "House not found" });
 
-    // Calculate the previous month and year accordingly
-    let prevMonth = currentMonth - 1;
-    let prevYear = currentYear;
-    if (prevMonth < 0) {
-      prevYear -= 1;
-      prevMonth = 11; // December of the previous year
-    }
+    const tz = house.timeZone || "UTC"; // e.g. "Europe/Berlin"
+    const now = moment.tz(tz);
 
-    // Define the date range for the current and previous months
-    const startOfCurrentMonth = new Date(Date.UTC(currentYear, currentMonth, 1));
-    const endOfCurrentMonth = new Date(Date.UTC(currentYear, currentMonth + 1, 0, 23, 59, 59, 999));
+    const currentYear  = year  ? parseInt(year)  : now.year();
+    const currentMonth = month ? parseInt(month) - 1 : now.month(); // moment months are 0-based
 
-    const startOfLastMonth = new Date(Date.UTC(prevYear, prevMonth, 1));
-    const endOfLastMonth = new Date(Date.UTC(prevYear, prevMonth + 1, 0, 23, 59, 59, 999));
+    // start/end of current month in house's TZ
+    const startOfCurrentMonth = moment.tz({ year: currentYear, month: currentMonth, day: 1, hour: 0, minute: 0, second: 0, millisecond: 0 }, tz);
+    const endOfCurrentMonth   = startOfCurrentMonth.clone().endOf("month");
 
-    // Fetch expenses for the current and previous months in a single query
+    // previous month range
+    const startOfLastMonth = startOfCurrentMonth.clone().subtract(1, "month").startOf("month");
+    const endOfLastMonth   = startOfCurrentMonth.clone().subtract(1, "month").endOf("month");
+
+    // Convert those moments to **UTC Date objects** for Mongo
     const expenses = await Expense.find({
       houseCode,
       userId,
       $or: [
-        { date: { $gte: startOfCurrentMonth, $lte: endOfCurrentMonth } },
-        { date: { $gte: startOfLastMonth, $lte: endOfLastMonth } }
+        { date: { $gte: startOfCurrentMonth.toDate(), $lte: endOfCurrentMonth.toDate() } },
+        { date: { $gte: startOfLastMonth.toDate(),   $lte: endOfLastMonth.toDate() } }
       ]
     });
 
-    if (!expenses.length) {
-      return res.status(404).json({ message: "No expenses found for this user" });
-    }
-
-    // Calculate total expenses for this month and last month
+    // Now simple month/year comparison in TZ (still fine to use your forEach if you like):
     let totalExpensesThisMonth = 0;
     let totalExpensesLastMonth = 0;
 
-    expenses.forEach((expense) => {
-      const isThisMonth = expense.date.getMonth() === currentMonth && expense.date.getFullYear() === currentYear;
-      const isLastMonth = expense.date.getMonth() === prevMonth && expense.date.getFullYear() === prevYear;
-
-      if (isThisMonth) totalExpensesThisMonth += expense.cost;
-      if (isLastMonth) totalExpensesLastMonth += expense.cost;
+    expenses.forEach(exp => {
+      const expMoment = moment.tz(exp.date, tz);
+      if (expMoment.isBetween(startOfCurrentMonth, endOfCurrentMonth, null, "[]"))
+        totalExpensesThisMonth += exp.cost;
+      else if (expMoment.isBetween(startOfLastMonth, endOfLastMonth, null, "[]"))
+        totalExpensesLastMonth += exp.cost;
     });
 
-    // Calculate percentage difference
     let percentage = 0;
     if (totalExpensesLastMonth > 0) {
       percentage = Math.round(
@@ -424,29 +430,34 @@ export const getCurrentMonthExpenseComparison = async (
 };
 
 
-
 export const getCurrentMonthExpensesByCategory = async (
   req: Request,
   res: Response
 ) => {
   try {
     const { houseCode, month, year } = req.params;
-    const today = new Date();
 
-    const currentMonth = month ? parseInt(month) - 1 : today.getMonth();
-    const currentYear = year ? parseInt(year) : today.getFullYear();
+    // Fetch house to get its time zone
+    const house = await House.findOne({ code: houseCode });
+    if (!house) return res.status(404).json({ message: "House not found" });
 
-    const startDate = new Date(currentYear, currentMonth, 1);
-    const endDate = new Date(currentYear, currentMonth + 1, 1); // exclusive
+    const tz = house.timeZone || "UTC";
 
+    // Determine current month/year in house's local time
+    const nowTz = month && year
+      ? moment.tz({ year: parseInt(year), month: parseInt(month) - 1 }, tz)
+      : moment.tz(tz);
+
+    // Start and end of current month in house's time zone
+    const startDate = nowTz.clone().startOf("month");
+    const endDate = nowTz.clone().endOf("month");
+
+    // Aggregate expenses by category
     const result = await Expense.aggregate([
       {
         $match: {
           houseCode,
-          date: {
-            $gte: startDate,
-            $lt: endDate,
-          },
+          date: { $gte: startDate.toDate(), $lte: endDate.toDate() },
         },
       },
       {
@@ -470,7 +481,7 @@ export const getCurrentMonthExpensesByCategory = async (
       });
     }
 
-    // Determine highest expense and total in one loop
+    // Calculate total and highest expense
     let highestExpense = { name: "", expenses: 0 };
     let totalExpenses = 0;
 
@@ -481,9 +492,9 @@ export const getCurrentMonthExpensesByCategory = async (
       }
     }
 
-    const percentage = Math.round(
-      (highestExpense.expenses / totalExpenses) * 100
-    );
+    const percentage = totalExpenses > 0
+      ? Math.round((highestExpense.expenses / totalExpenses) * 100)
+      : 0;
 
     res.status(200).json({
       result,
@@ -496,27 +507,34 @@ export const getCurrentMonthExpensesByCategory = async (
   }
 };
 
-
-
 export const getCurrentMonthExpensesByStore = async (
   req: Request,
   res: Response
 ) => {
   try {
     const { houseCode, month, year } = req.params;
-    const today = new Date();
-    const currentMonth = month ? parseInt(month) - 1 : today.getMonth(); // 0-indexed
-    const currentYear = year ? parseInt(year) : today.getFullYear();
 
-    const startOfMonth = new Date(currentYear, currentMonth, 1);
-    const endOfMonth = new Date(currentYear, currentMonth + 1, 0);
-    endOfMonth.setHours(23, 59, 59, 999);
+    // Fetch house to get its time zone
+    const house = await House.findOne({ code: houseCode });
+    if (!house) return res.status(404).json({ message: "House not found" });
 
+    const tz = house.timeZone || "UTC";
+
+    // Determine current month/year in house's local time
+    const nowTz = month && year
+      ? moment.tz({ year: parseInt(year), month: parseInt(month) - 1 }, tz)
+      : moment.tz(tz);
+
+    // Start and end of month in house's time zone
+    const startOfMonth = nowTz.clone().startOf("month");
+    const endOfMonth = nowTz.clone().endOf("month");
+
+    // Aggregate expenses by store
     const storeExpenses = await Expense.aggregate([
       {
         $match: {
           houseCode,
-          date: { $gte: startOfMonth, $lte: endOfMonth },
+          date: { $gte: startOfMonth.toDate(), $lte: endOfMonth.toDate() },
         },
       },
       {
@@ -538,9 +556,7 @@ export const getCurrentMonthExpensesByStore = async (
     ]);
 
     if (!storeExpenses.length) {
-      return res
-        .status(404)
-        .json({ message: "No expenses found for this user" });
+      return res.status(404).json({ message: "No expenses found for this user" });
     }
 
     // Top five stores
@@ -550,10 +566,7 @@ export const getCurrentMonthExpensesByStore = async (
     const highestExpense = topFive[0];
 
     // Total expenses
-    const totalExpenses = storeExpenses.reduce(
-      (acc, store) => acc + store.expenses,
-      0
-    );
+    const totalExpenses = storeExpenses.reduce((acc, store) => acc + store.expenses, 0);
 
     const percentage = totalExpenses
       ? Math.round((highestExpense.expenses / totalExpenses) * 100)
@@ -571,22 +584,29 @@ export const getCurrentMonthExpensesByStore = async (
 };
 
 
+
 export const getLast6MonthsExpensesByCategory = async (
   req: Request,
   res: Response,
 ) => {
   try {
     const { houseCode, month, year } = req.params
-    const today = new Date()
-    const currentMonth = month ? parseInt(month) - 1 : today.getMonth()
-    const currentYear = year ? parseInt(year) : today.getFullYear()
+    const house = await House.findOne({ code: houseCode });
+    if (!house) return res.status(404).json({ message: "House not found" });
 
-    const start = new Date(currentYear, currentMonth, 1)
-    start.setMonth(start.getMonth() - 5) // go 5 months back for a 6-month window
+    const tz = house.timeZone || "UTC";
 
+    // Determine current month/year in house's local time
+    const nowTz = month && year
+      ? moment.tz({ year: parseInt(year), month: parseInt(month) - 1 }, tz)
+      : moment.tz(tz);
+    // Start of period: 5 months ago
+    const start = nowTz.clone().startOf("month").subtract(5, "months");
+    const end = nowTz.clone().endOf("month");
+    // Aggregate expenses in MongoDB
     const allExpenses = await Expense.find({
       houseCode,
-      date: { $gte: start, $lte: today },
+      date: { $gte: start.toDate(), $lte: end.toDate() },
     }).select("cost category date").exec()
 
     if (!allExpenses.length) {
@@ -621,8 +641,10 @@ export const getLast6MonthsExpensesByCategory = async (
 
     const monthIndexes: number[] = []
     for (let i = 0; i < 6; i++) {
-      const monthIndex = (start.getMonth() + i) % 12
-      monthIndexes.push(monthIndex)
+      // const monthIndex = (start.getMonth() + i) % 12
+      // monthIndexes.push(monthIndex)
+      const monthIndex = (nowTz.month() - 5 + i + 12) % 12;
+      monthIndexes.push(monthIndex);
     }
     const last6Months = monthIndexes.map((monthIndex) => {
       const monthData = finalResult[monthIndex]
@@ -666,26 +688,49 @@ export const getLast6MonthsExpensesByCategory = async (
 export const getLast6MonthsExpensesByHouseStoreName = async (req: Request, res: Response) => {
   try {
     const { houseCode, month, year } = req.params
-    const today = new Date()
+    // const today = new Date()
 
-    const currentMonth = month ? parseInt(month) - 1 : today.getMonth() // months are 0-indexed
-    const currentYear = year ? parseInt(year) : today.getFullYear()
+    // const currentMonth = month ? parseInt(month) - 1 : today.getMonth() // months are 0-indexed
+    // const currentYear = year ? parseInt(year) : today.getFullYear()
 
-    // Set the start date to six months ago
-    const sixMonthsAgo = new Date(currentYear, currentMonth, 1)
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5) // move six months back
+    // // Set the start date to six months ago
+    // const sixMonthsAgo = new Date(currentYear, currentMonth, 1)
+    // sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5) // move six months back
 
-    // Fetch expenses within the last 6 months for the given house and user
-    const allExpenses = await Expense.find({ houseCode })
+    // // Fetch expenses within the last 6 months for the given house and user
+    // const allExpenses = await Expense.find({ houseCode })
 
-    if (!allExpenses.length) {
+    // if (!allExpenses.length) {
+    //   return res.status(404).json({ message: "No expenses found" })
+    // }
+
+    // const allExpensesLast6Months = allExpenses.filter(
+    //   (expense: any) =>
+    //     expense.date >= sixMonthsAgo && expense.date <= today
+    // )
+    const house = await House.findOne({ code: houseCode });
+    if (!house) return res.status(404).json({ message: "House not found" });
+
+    const tz = house.timeZone || "UTC";
+
+    // Determine current month/year in house's local time
+    const nowTz = month && year
+      ? moment.tz({ year: parseInt(year), month: parseInt(month) - 1 }, tz)
+      : moment.tz(tz);
+
+    // Start of period: 5 months ago
+    const sixMonthsAgo = nowTz.clone().startOf("month").subtract(5, "months");
+    const end = nowTz.clone().endOf("month");
+    // Aggregate expenses in MongoDB
+    const allExpensesLast6Months = await Expense.find({
+      houseCode,
+      date: { $gte: sixMonthsAgo.toDate(), $lte: end.toDate() },
+    }).select("cost storeName date").exec()
+    if (!allExpensesLast6Months.length) {
       return res.status(404).json({ message: "No expenses found" })
     }
 
-    const allExpensesLast6Months = allExpenses.filter(
-      (expense: any) =>
-        expense.date >= sixMonthsAgo && expense.date <= today
-    )
+
 
     const initialExpenses = allExpensesLast6Months
       .map((entry: any) => ({
@@ -739,7 +784,7 @@ export const getLast6MonthsExpensesByHouseStoreName = async (req: Request, res: 
 
     const last6MonthsIndices: number[] = []
     for (let i = 0; i < 6; i++) {
-      const monthIndex = (sixMonthsAgo.getMonth() + i) % 12;
+      const monthIndex = (nowTz.month() - 5 + i + 12) % 12;
       last6MonthsIndices.push(monthIndex);
     }
 
