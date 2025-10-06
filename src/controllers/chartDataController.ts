@@ -174,7 +174,7 @@ export const getLast6MonthsExpensesByHouse = async (req: Request, res: Response)
     ];
 
     // Build last 6 months array with 0 fallback
-    const last6Months: { name: string; expenses: string }[] = [];
+    const last6Months: { name: string; expenses: number }[] = [];
     for (let i = 5; i >= 0; i--) {
       const date = nowTz.clone().subtract(i, "months");
       const monthIndex = date.month(); // 0-based
@@ -186,7 +186,7 @@ export const getLast6MonthsExpensesByHouse = async (req: Request, res: Response)
 
       last6Months.push({
         name: monthsOfTheYear[monthIndex],
-        expenses: matched ? matched.total.toFixed(2) : "0",
+        expenses: matched ? Number(matched.total.toFixed(2)) : 0,
       });
     }
 
@@ -355,7 +355,7 @@ export const getCurrentMonthExpensesByHouseMembers = async (req: Request, res: R
       const userExpense = expensesByUser[user.username] || 0;
       return {
         name: user.username,
-        expenses: userExpense.toFixed(2),
+        expenses: Number(userExpense.toFixed(2)),
         firstName: user.name ? user.name.split(" ")[0] : user.name,
       };
     });
