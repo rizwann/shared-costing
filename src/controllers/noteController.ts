@@ -16,10 +16,11 @@ export const getNotesByHouseCode = async (req: Request, res: Response) => {
   const { houseCode } = req.params
 
   try {
-    const notes = await Note.find({ houseCode })
+    let notes = await Note.find({ houseCode })
     if (notes.length === 0) {
       return res.status(404).json({ message: "No notes found for this house" })
     }
+    notes.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
     // sort the todos inside each note by status (pending, done, rejected)
     notes.forEach(note => {
       note.todos.sort((a, b) => {
