@@ -119,9 +119,10 @@ export const updateUsernameEmail = async (req: Request, res: Response) => {
 
 export const updateUserPassword = async (req: Request, res: Response) => {
   try {
-    const { password, oldPassword, userId } = req.body;
+    const { password, oldPassword } = req.body
+    const { userId } = req.params
 
-    const user = await User.findById(userId);
+    const user = await User.findById(userId)
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
