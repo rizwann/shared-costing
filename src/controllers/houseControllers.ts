@@ -314,7 +314,7 @@ export const joinHouse = async (req: Request, res: Response) => {
       }
     } else {
       res.status(401).json({
-        message: "You are not registered with us... who the fuck are you!!!",
+        message: "You are not registered with us...!!!",
       });
     }
   } catch (error) {
@@ -466,7 +466,7 @@ export const leaveHouse = async (req: Request, res: Response) => {
       }
     } else {
       res.status(401).json({
-        message: "You are not registered with us... who the fuck are you!!!",
+        message: "You are not registered with us!!!",
       });
     }
   } catch (error) {
