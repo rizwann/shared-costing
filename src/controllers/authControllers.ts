@@ -4,9 +4,9 @@ import bcrypt from "bcrypt";
 import { Request, Response } from "express";
 import { validationResult } from "express-validator";
 import jwt from "jsonwebtoken";
-import nodemailer from "nodemailer";
 import { User } from "../models/User";
 import House from "../models/House";
+import { sendAppEmail } from "../utils/email"
 
 export const regUser = async (req: Request, res: Response) => {
   const { username, email, password, name } = req.body;
@@ -54,14 +54,6 @@ export const regUser = async (req: Request, res: Response) => {
     const link = `${APP_URL}/api/auth/activate/${user._id}/${token}`;
     const emailLink = `${FE_URL}/auth/activate/${user._id}?token=${token}`;
 
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.APP_EMAIL as string,
-        pass: process.env.APP_PASSWORD as string,
-      },
-    });
-
     var mailOptions = {
       from: {
         name: "House Expense Manager",
@@ -107,13 +99,7 @@ export const regUser = async (req: Request, res: Response) => {
      `,
     };
 
-    transporter.sendMail(mailOptions, function (error, info) {
-      if (error) {
-        console.log(error);
-      } else {
-        console.log("Email sent: " + info.response);
-      }
-    });
+    await sendAppEmail(mailOptions)
 
     return res
       .status(201)
@@ -156,13 +142,6 @@ export const activateUser = async (req: Request, res: Response) => {
 
     // Send email
 
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.APP_EMAIL as string,
-        pass: process.env.APP_PASSWORD as string,
-      },
-    });
     const username = user.username.toLocaleUpperCase();
 
     const mailOptions = {
@@ -204,13 +183,7 @@ export const activateUser = async (req: Request, res: Response) => {
   `,
     };
 
-    transporter.sendMail(mailOptions, function (error, info) {
-      if (error) {
-        console.log(error);
-      } else {
-        console.log("Email sent: " + info.response);
-      }
-    });
+    await sendAppEmail(mailOptions)
 
     return res.status(200).json({ message: "Account activated successfully" });
   } catch (error: any) {
@@ -291,14 +264,6 @@ export const forgetPassword = async (req: Request, res: Response) => {
     // const emailLink = `${FE_URL}/reset-password/${oldUser._id}/${token}`;
     const emailLink = `${FE_URL}/reset-password/${oldUser._id}?token=${token}`;
 
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.APP_EMAIL as string,
-        pass: process.env.APP_PASSWORD as string,
-      },
-    });
-
     var mailOptions = {
       from: {
         name: "House Expense Manager",
@@ -335,13 +300,7 @@ export const forgetPassword = async (req: Request, res: Response) => {
      `,
     };
 
-    transporter.sendMail(mailOptions, function (error, info) {
-      if (error) {
-        console.log(error);
-      } else {
-        console.log("Email sent: " + info.response);
-      }
-    });
+    await sendAppEmail(mailOptions)
 
     res.json({ status: "Password Reset Link Sent to your email id", link });
   } catch (error) {

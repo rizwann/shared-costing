@@ -2,8 +2,7 @@ import { Request, Response } from "express";
 import House from "../models/House";
 import { User } from "../models/User";
 import Expense from "../models/Expense";
-
-const nodemailer = require("nodemailer")
+import { sendAppEmail } from "../utils/email"
 
 
 export const createHouse = async (req: Request, res: Response) => {
@@ -235,15 +234,8 @@ export const joinHouse = async (req: Request, res: Response) => {
       // Check if the user is not already in the house
       if (!user.houseCodes.includes(code)) {
         const FE_URL = process.env.FRONTEND_URL as string
-        const sendEmail = (email: string, name: string, ownId: string) => {
-        const emailLink = `${FE_URL}/accept-user/${user._id}/${house.code}/${ownId}`;
-          const transporter = nodemailer.createTransport({
-            service: "gmail",
-            auth: {
-              user: process.env.APP_EMAIL as string,
-              pass: process.env.APP_PASSWORD as string,
-            },
-          })
+        const sendEmail = async (email: string, name: string, ownId: string) => {
+          const emailLink = `${FE_URL}/accept-user/${user._id}/${house.code}/${ownId}`
           const mailOptions = {
             from:{
               name: "House Expense Manager",
@@ -291,26 +283,19 @@ export const joinHouse = async (req: Request, res: Response) => {
         </html>
             `,
           };
-          transporter.sendMail(mailOptions, function (error:any, info:any) {
-            if (error) {
-              console.log(error);
-            } else {
-              console.log("Email sent: " + info.response);
-            }
-          });
+          await sendAppEmail(mailOptions)
         }
-        house.users.forEach(async (id) => {
-          const userToEmail = await User.findById(id);
+        await Promise.all(house.users.map(async (id) => {
+          const userToEmail = await User.findById(id)
           if(userToEmail){
-            sendEmail(userToEmail.email, userToEmail.name!, userToEmail._id!);
+            await sendEmail(userToEmail.email, userToEmail.name!, userToEmail._id!)
           }
-        }
-        )
-        res.status(200).json({ message: "Email sent to house members" });
+        }))
+        res.status(200).json({ message: "Email sent to house members" })
         
 
       } else {
-        res.status(400).json({ message: "User is already in the house" });
+        res.status(400).json({ message: "User is already in the house" })
       }
     } else {
       res.status(401).json({
@@ -343,14 +328,7 @@ export const acceptUser = async (req: Request, res: Response) => {
       house.userNames.push(user.username)
       await house.save()
     }
-    const sendEmail = (email: string, name: string) => {
-      const transporter = nodemailer.createTransport({
-        service: "gmail",
-        auth: {
-          user: process.env.APP_EMAIL as string,
-          pass: process.env.APP_PASSWORD as string,
-        },
-      })
+    const sendEmail = async (email: string, name: string) => {
       const mailOptions = {
         from: {
           name: "House Expense Manager",
@@ -392,16 +370,10 @@ export const acceptUser = async (req: Request, res: Response) => {
         </html>
             `,
       }
-      transporter.sendMail(mailOptions, function (error: any, info: any) {
-        if (error) {
-          console.log(error)
-        } else {
-          console.log("Email sent: " + info.response)
-        }
-      })
+      await sendAppEmail(mailOptions)
     }
 
-    sendEmail(user.email, user.name!)
+    await sendEmail(user.email, user.name!)
     res.status(200).json({ message: "Joined house successfully" })
   } else {
     res.status(400).json({ message: "User is already in the house" })

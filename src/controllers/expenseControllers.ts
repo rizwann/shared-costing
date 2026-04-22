@@ -5,6 +5,7 @@ import { IUser, User } from "../models/User"
 import { Expense as IExpense } from "../../types"
 import House from "../models/House"
 import { convertToISO8601 } from "../utils"
+import { sendAppEmail } from "../utils/email"
 
 // Create a new expense
 export const createExpense = async (req: Request, res: Response) => {
@@ -90,25 +91,6 @@ export const createExpense = async (req: Request, res: Response) => {
     const emailLink = `${FE_URL}/expenses/${savedExpense._id}`
 
     const sendEmail = async (email: string, name: string) => {
-      const nodemailer = require("nodemailer")
-      const transporter = nodemailer.createTransport({
-        host: "smtp.gmail.com",
-        port: 587,
-        secure: false,
-        requireTLS: true,
-        auth: {
-          user: process.env.APP_EMAIL as string,
-          pass: process.env.APP_PASSWORD as string,
-        },
-        tls: {
-          rejectUnauthorized: false,
-        },
-        connectionTimeout: 10000, // optional
-        greetingTimeout: 10000, // optional
-        socketTimeout: 10000, // optional
-        dns: { family: 4 }, // Force IPv4
-      })
-      
       const timeOnlyHoursMinutes = new Date(savedExpense.date).toLocaleString("de-DE", { timeZone: houseTimezone, hour: "2-digit", minute: "2-digit" })
       const addedBy = await User.findById(userId).select("username")
       const mailOptions = {
@@ -157,18 +139,12 @@ export const createExpense = async (req: Request, res: Response) => {
         `,
       }
 
-      transporter.sendMail(mailOptions, (error: any, info: any) => {
-        if (error) {
-          console.log(error)
-        } else {
-          console.log("Email sent: " + info.response)
-        }
-      })
+      await sendAppEmail(mailOptions)
     }
     involvedUsers
-    involvedUsersWithEmails.forEach((user) => {
-      sendEmail(user.email, user.name!)
-    })
+    await Promise.all(
+      involvedUsersWithEmails.map((user) => sendEmail(user.email, user.name!))
+    )
     //save the storeName to the store collection, if it doesn't exist
     const store = await Store.findOne({ name: storeName })
     if (!store) {
