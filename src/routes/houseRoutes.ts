@@ -63,7 +63,7 @@ router.get("/", getHousesByUserId)
 
 router.get("/users/:code", isHouser, getUserByHouseCode)
 
-router.get("/:code", isHouser, getSingleHouse)
+router.get("/:code", getSingleHouse)
 
 router.get("/house/:id", isHouseMember, getHouseById)
 

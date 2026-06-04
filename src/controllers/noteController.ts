@@ -50,7 +50,6 @@ export const createNote = async (req: Request, res: Response) => {
       userId,
       houseCode,
     })
-    console.log("henda", todos)
     const savedNote = await newNote.save()    
     
     res.status(201).json(savedNote)
